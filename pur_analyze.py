@@ -10,26 +10,13 @@ California's post-2020 regulatory landscape.
 
 v2 changes:
 - Added acres_treated as a co-equal output alongside lbs_ai
-- Added optional toxicity weighting via avian acute oral LD50 (illustrative
-  defaults; see TOXICITY caveats below)
-- Added optional aquatic invertebrate toxicity weighting via Daphnia magna
-  acute LC50 (more relevant for aerial insectivore prey-base question)
+- Toxicity weighting via avian acute oral LD50 and Daphnia magna 48h EC50;
+  values sourced from Hertfordshire PPDB and EPA ECOTOX — see
+  toxicity_lookup.csv for per-chemical citations and species
+- Aquatic invertebrate toxicity weighting (more relevant for aerial
+  insectivore prey-base question than direct avian toxicity)
 - Four chart sets: lbs, acres, avian-tox-weighted, aquatic-tox-weighted
 - Summary tables written for each metric
-
-*** TOXICITY VALUES ARE ILLUSTRATIVE — NOT FOR EXTERNAL USE ***
-
-The avian LD50 and aquatic LC50 reference tables in this script are
-illustrative defaults suitable only for internal exploratory analysis. They
-are NOT properly sourced from EPA ECOTOX, Hertfordshire PPDB, or any other
-documented database, and they must NOT be cited or used in grant proposals,
-manuscripts, agency reports, or external presentations without first being
-re-sourced with documented citations. See the comment blocks above each
-toxicity table for full details on what proper sourcing requires.
-
-The lbs and acres outputs are sourced directly from CDPR PUR and are safe
-to use externally with appropriate caveats about data resolution and
-application-vs-exposure interpretation.
 
 Source:
     https://files.cdpr.ca.gov/pub/outgoing/pur_archives/pur{YEAR}.zip
@@ -88,10 +75,8 @@ BASE_URL = "https://files.cdpr.ca.gov/pub/outgoing/pur_archives"
 # Restrict to agricultural use only.
 AG_ONLY = True
 
-# Toggle toxicity-weighted output. Defaults are illustrative bobwhite quail
-# acute oral LD50 (mg/kg) drawn from EPA ECOTOX and the Hertfordshire PPDB.
-# Enable this if you want a directional toxicity comparison; do NOT use the
-# specific numbers in a publication or proposal without sourcing them properly.
+# Toggle toxicity-weighted output. Values sourced from Hertfordshire PPDB and
+# EPA ECOTOX; see toxicity_lookup.csv for per-chemical citations and species.
 TOXICITY_WEIGHTING = True
 
 # Chemical class definitions.
@@ -129,210 +114,55 @@ CHEMICAL_CLASSES: dict[str, list[str]] = {
 
 
 # ---------------------------------------------------------------------------
-# TOXICITY REFERENCE TABLE — ILLUSTRATIVE DEFAULTS (NOT FOR PUBLICATION)
+# TOXICITY REFERENCE TABLES — sourced from Hertfordshire PPDB and EPA ECOTOX
 # ---------------------------------------------------------------------------
-#
-# *** READ THIS BEFORE USING ANY OF THESE NUMBERS EXTERNALLY ***
-#
-# The values in this table are ILLUSTRATIVE DEFAULTS suitable only for
-# internal exploratory analysis. They are NOT properly sourced and must NOT
-# be used in any of the following contexts without re-sourcing first:
-#
-#   - Grant proposals (beyond directional, internal-discussion use)
-#   - Peer-reviewed manuscripts
-#   - Reports to CDPR or any other agency
-#   - Any external presentation or document
-#
-# Why these values are not yet publication-ready:
-#   1. They are drawn from author knowledge of EPA ECOTOX and Hertfordshire
-#      PPDB conventions, not from a documented query of either database.
-#   2. Each chemical typically has multiple published LD50 values that vary
-#      by test species (Bobwhite vs. Mallard), test duration (acute oral vs.
-#      5-day dietary), and study conditions. The single value chosen here
-#      reflects no documented selection criterion.
-#   3. ">N" ceiling values (where LD50 was not reached at the highest dose
-#      tested) are recorded as N, which understates true safety margins.
-#   4. No citations are attached to individual values.
-#
-# To make this table publication-ready, every chemical needs: source database,
-# chemical record URL or EPA ECOTOX query parameters, test species, test
-# duration, selected endpoint with rationale, and citation. Plan ~4-8 hours
-# of careful database work, ideally done collaboratively with a toxicology
-# partner.
-#
-# Avian acute oral LD50 in mg/kg body weight (Northern Bobwhite, Colinus
-# virginianus, where available; else Mallard or other surrogate).
+# Per-chemical citations, test species, ceiling flags, and data-quality notes
+# are in toxicity_lookup.csv alongside this script.
 #
 # IMPORTANT INTERPRETATION CAVEAT
-# -------------------------------
+# --------------------------------
 # Avian oral LD50 measures direct toxicity to birds via ingestion of the
 # chemical. For aerial insectivores (birds AND bats), the dominant exposure
 # pathway is via the prey base — flying insects whose populations are affected
 # by these chemicals. For that question, aquatic invertebrate toxicity (Daphnia
-# magna LC50) is more directly relevant, especially for pyrethroids which have
+# magna EC50) is more directly relevant, especially for pyrethroids which have
 # very low avian toxicity but extreme aquatic invertebrate toxicity.
 #
-# The bird LD50 weighting below is therefore best read as a direct-mortality
-# proxy. A second pass with prey-toxicity weighting (the AQUATIC_LC50_UG_PER_L
-# table below) tells a meaningfully different story and is generally more
-# relevant for the aerial-insectivore question.
+# The bird LD50 weighting is therefore best read as a direct-mortality proxy.
+# Prey-base disruption is better captured by the Daphnia EC50 weighting.
 #
-# Lower LD50 = more toxic per unit mass.
-# Values marked ">N" are reported as greater than the test ceiling — actual
-# toxicity is at least that low (i.e., LD50 was not reached). Treated as N here.
+# Lower LD50/EC50 = more toxic per unit mass/concentration.
+# Ceiling values (">N") are stored as N — conservative floor; actual toxicity
+# is at least that low.
+# Class-level medians are used as fallback for any chemical not in the CSV
+# (see build_toxicity_lookup).
 
-AVIAN_LD50_MG_PER_KG: dict[str, float] = {
-    # Restricted neonics
-    "imidacloprid": 31.0,
-    "clothianidin": 423.0,
-    "thiamethoxam": 1552.0,
-    "dinotefuran": 2000.0,        # >2000 reported
-    # Other neonics
-    "acetamiprid": 180.0,
-    "thiacloprid": 49.0,
-    "nitenpyram": 1130.0,
-    # Next-gen systemics
-    "sulfoxaflor": 750.0,
-    "flupyradifurone": 1112.0,
-    # Diamides
-    "chlorantraniliprole": 2250.0,    # >2250 reported
-    "cyantraniliprole": 2250.0,       # >2250 reported
-    "flubendiamide": 2000.0,
-    "tetraniliprole": 2000.0,
-    # Pyrethroids — note low direct avian toxicity
-    "lambda-cyhalothrin": 3950.0,
-    "gamma-cyhalothrin": 3950.0,
-    "bifenthrin": 1800.0,
-    "esfenvalerate": 2000.0,
-    "permethrin": 9847.0,
-    "cypermethrin": 9929.0,
-    "zeta-cypermethrin": 9929.0,
-    "cyfluthrin": 2000.0,
-    "beta-cyfluthrin": 2000.0,
-    "deltamethrin": 4640.0,
-    "fenpropathrin": 1089.0,
-    "tau-fluvalinate": 2510.0,
-    "tralomethrin": 2000.0,
-    # Organophosphates — generally high direct avian toxicity
-    "chlorpyrifos": 32.0,
-    "malathion": 167.0,
-    "diazinon": 4.0,
-    "dimethoate": 22.0,
-    "acephate": 234.0,
-    "phosmet": 26.0,
-    "methidathion": 12.0,
-    "naled": 37.0,
-    "oxydemeton-methyl": 6.5,
-    "phorate": 1.0,
-    "azinphos-methyl": 7.5,
-    # Carbamates
-    "carbaryl": 56.0,
-    "methomyl": 24.0,
-    "oxamyl": 4.0,
-    "carbofuran": 0.4,
-    "aldicarb": 1.0,
-    # Spinosyns
-    "spinosad": 2000.0,
-    "spinetoram": 2000.0,
-}
-
-# Class-level fallback if a chemical isn't in the table above (median of
-# in-class entries computed at runtime if needed).
+def _load_toxicity_csv() -> tuple[dict[str, float], dict[str, float]]:
+    # Schema: chemname(0),class(1),avian_ld50(2),avian_ceiling(3),avian_species(4),
+    #         avian_url(5),aquatic_lc50(6),aquatic_ceiling(7),aquatic_species(8),
+    #         aquatic_url(9),notes(10+)
+    # The notes field often contains unquoted commas so we read by column index.
+    csv_path = Path(__file__).parent / "toxicity_lookup.csv"
+    if not csv_path.exists():
+        sys.exit(f"ERROR: toxicity_lookup.csv not found at {csv_path}")
+    avian: dict[str, float] = {}
+    aquatic: dict[str, float] = {}
+    with open(csv_path, encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            if i == 0:
+                continue  # header
+            parts = line.rstrip("\n\r").split(",")
+            if len(parts) < 7:
+                continue
+            try:
+                avian[parts[0]] = float(parts[2])
+                aquatic[parts[0]] = float(parts[6])
+            except ValueError:
+                pass
+    return avian, aquatic
 
 
-# ---------------------------------------------------------------------------
-# AQUATIC INVERTEBRATE TOXICITY REFERENCE — ILLUSTRATIVE DEFAULTS (NOT FOR PUBLICATION)
-# ---------------------------------------------------------------------------
-#
-# *** SAME WARNING AS THE AVIAN LD50 TABLE ABOVE ***
-#
-# The values in this table are ILLUSTRATIVE DEFAULTS suitable only for
-# internal exploratory analysis. They are NOT properly sourced and must NOT
-# be used externally without re-sourcing. See the warning block above the
-# avian LD50 table for the full caveat. Pyrethroid LC50 in particular varies
-# by 1-2 orders of magnitude across published studies depending on test
-# conditions, formulation, and Daphnia age class — proper sourcing for this
-# class is especially important.
-#
-# Daphnia magna 48-hour acute LC50 in μg/L (micrograms per liter).
-#
-# WHY THIS METRIC MATTERS
-# -----------------------
-# Aerial insectivores (birds and bats) feed predominantly on flying insects,
-# many of which have aquatic larval stages (chironomids, mayflies, caddisflies)
-# or are otherwise affected by surface-water and edge-of-field contamination.
-# Aquatic invertebrate toxicity is therefore a substantially better proxy for
-# prey-base disruption than direct avian toxicity. Pyrethroids in particular
-# show 4–6 orders of magnitude difference between avian and aquatic endpoints:
-# permethrin's avian LD50 is ~9847 mg/kg (low direct bird toxicity) but its
-# Daphnia LC50 is ~0.6 μg/L (extreme aquatic invert toxicity).
-#
-# CAVEAT: Daphnia magna is a freshwater zooplankton, not a flying insect
-# larva. It is the EPA standard surrogate for "aquatic invertebrate toxicity"
-# but the actual aerial-insectivore prey base includes chironomids, mayflies,
-# and other dipteran/ephemeropteran larvae. Toxicity rankings are usually
-# similar but not identical across these taxa.
-#
-# Lower LC50 = more toxic per unit concentration.
-# Toxicity Units = lbs / LC50 — same formula as avian, but vastly different
-# magnitudes per chemical class. Absolute TU values are not comparable across
-# the avian and aquatic tables; only within-class trends and relative
-# composition are meaningful.
-
-AQUATIC_LC50_UG_PER_L: dict[str, float] = {
-    # Restricted neonics — moderate-to-high aquatic invert toxicity
-    "imidacloprid": 55.0,
-    "clothianidin": 22.0,
-    "thiamethoxam": 35.0,
-    "dinotefuran": 1000.0,
-    # Other neonics
-    "acetamiprid": 49.8,
-    "thiacloprid": 85.1,
-    "nitenpyram": 600.0,
-    # Next-gen systemics
-    "sulfoxaflor": 380.0,
-    "flupyradifurone": 290.0,
-    # Diamides — selectively toxic, modest Daphnia impact
-    "chlorantraniliprole": 11.6,
-    "cyantraniliprole": 4.0,
-    "flubendiamide": 320.0,
-    "tetraniliprole": 200.0,
-    # Pyrethroids — extreme aquatic invert toxicity, sub-ppb LC50s
-    "lambda-cyhalothrin": 0.36,
-    "gamma-cyhalothrin": 0.20,
-    "bifenthrin": 0.16,
-    "esfenvalerate": 0.10,
-    "permethrin": 0.60,
-    "cypermethrin": 0.30,
-    "zeta-cypermethrin": 0.26,
-    "cyfluthrin": 0.14,
-    "beta-cyfluthrin": 0.14,
-    "deltamethrin": 0.56,
-    "fenpropathrin": 0.41,
-    "tau-fluvalinate": 0.40,
-    "tralomethrin": 0.41,
-    # Organophosphates — high aquatic toxicity but mostly less than pyrethroids
-    "chlorpyrifos": 0.10,
-    "malathion": 0.74,
-    "diazinon": 0.80,
-    "dimethoate": 2000.0,
-    "acephate": 92000.0,
-    "phosmet": 5.7,
-    "methidathion": 4.9,
-    "naled": 0.35,
-    "oxydemeton-methyl": 50.0,
-    "phorate": 1.8,
-    "azinphos-methyl": 1.0,
-    # Carbamates — high aquatic invert toxicity
-    "carbaryl": 5.6,
-    "methomyl": 8.8,
-    "oxamyl": 270.0,
-    "carbofuran": 9.4,
-    "aldicarb": 75.0,
-    # Spinosyns — moderate aquatic invert toxicity
-    "spinosad": 92.0,
-    "spinetoram": 14.0,
-}
+AVIAN_LD50_MG_PER_KG, AQUATIC_LC50_UG_PER_L = _load_toxicity_csv()
 
 
 # ---------------------------------------------------------------------------
@@ -573,10 +403,10 @@ CHART_TITLES = {
                               "Million lbs AI applied", 1e6),
     "acres_treated": ("California agricultural insecticide application area by chemical class",
                       "Million acres treated", 1e6),
-    "toxicity_units_avian_ld50": ("Avian-LD50-weighted insecticide load (illustrative)",
+    "toxicity_units_avian_ld50": ("Avian-LD50-weighted insecticide load",
                                   "Toxicity units (lbs ÷ avian LD50)", 1.0),
-    "toxicity_units_aquatic_lc50": ("Aquatic-invertebrate-LC50-weighted insecticide load (illustrative)",
-                                    "Toxicity units (lbs ÷ Daphnia LC50)", 1.0),
+    "toxicity_units_aquatic_lc50": ("Aquatic-invertebrate-LC50-weighted insecticide load",
+                                    "Toxicity units (lbs ÷ Daphnia EC50)", 1.0),
 }
 
 
@@ -645,7 +475,7 @@ def main() -> int:
 
     print(f"PUR analysis v2: years {YEARS[0]}–{YEARS[-1]}")
     print(f"Output: {OUTPUT_DIR.resolve()}")
-    print(f"Toxicity weighting: {'ON (illustrative defaults)' if TOXICITY_WEIGHTING else 'OFF'}\n")
+    print(f"Toxicity weighting: {'ON (PPDB/ECOTOX sources)' if TOXICITY_WEIGHTING else 'OFF'}\n")
 
     # Step 1: download
     print("Step 1: download archives")
@@ -729,13 +559,13 @@ def main() -> int:
             "toxicity_units_avian_ld50",
             "pur_yearly_tox_avian_by_class.csv",
             "pur_chart_toxicity_avian.png",
-            "AVIAN-LD50-WEIGHTED TOXICITY UNITS (illustrative)",
+            "AVIAN-LD50-WEIGHTED TOXICITY UNITS",
         ))
         metrics.append((
             "toxicity_units_aquatic_lc50",
             "pur_yearly_tox_aquatic_by_class.csv",
             "pur_chart_toxicity_aquatic.png",
-            "AQUATIC-INVERT-LC50-WEIGHTED TOXICITY UNITS (illustrative)",
+            "AQUATIC-INVERT-EC50-WEIGHTED TOXICITY UNITS",
         ))
 
     for value_col, csv_name, chart_name, label in metrics:
