@@ -17,6 +17,20 @@ v2 changes:
 - Four chart sets: lbs, acres, avian-tox-weighted, aquatic-tox-weighted
 - Summary tables written for each metric
 
+*** TOXICITY VALUES ARE ILLUSTRATIVE — NOT FOR EXTERNAL USE ***
+
+The avian LD50 and aquatic LC50 reference tables in this script are
+illustrative defaults suitable only for internal exploratory analysis. They
+are NOT properly sourced from EPA ECOTOX, Hertfordshire PPDB, or any other
+documented database, and they must NOT be cited or used in grant proposals,
+manuscripts, agency reports, or external presentations without first being
+re-sourced with documented citations. See the comment blocks above each
+toxicity table for full details on what proper sourcing requires.
+
+The lbs and acres outputs are sourced directly from CDPR PUR and are safe
+to use externally with appropriate caveats about data resolution and
+application-vs-exposure interpretation.
+
 Source:
     https://files.cdpr.ca.gov/pub/outgoing/pur_archives/pur{YEAR}.zip
 
@@ -115,13 +129,39 @@ CHEMICAL_CLASSES: dict[str, list[str]] = {
 
 
 # ---------------------------------------------------------------------------
-# TOXICITY REFERENCE TABLE — ILLUSTRATIVE DEFAULTS
+# TOXICITY REFERENCE TABLE — ILLUSTRATIVE DEFAULTS (NOT FOR PUBLICATION)
 # ---------------------------------------------------------------------------
 #
+# *** READ THIS BEFORE USING ANY OF THESE NUMBERS EXTERNALLY ***
+#
+# The values in this table are ILLUSTRATIVE DEFAULTS suitable only for
+# internal exploratory analysis. They are NOT properly sourced and must NOT
+# be used in any of the following contexts without re-sourcing first:
+#
+#   - Grant proposals (beyond directional, internal-discussion use)
+#   - Peer-reviewed manuscripts
+#   - Reports to CDPR or any other agency
+#   - Any external presentation or document
+#
+# Why these values are not yet publication-ready:
+#   1. They are drawn from author knowledge of EPA ECOTOX and Hertfordshire
+#      PPDB conventions, not from a documented query of either database.
+#   2. Each chemical typically has multiple published LD50 values that vary
+#      by test species (Bobwhite vs. Mallard), test duration (acute oral vs.
+#      5-day dietary), and study conditions. The single value chosen here
+#      reflects no documented selection criterion.
+#   3. ">N" ceiling values (where LD50 was not reached at the highest dose
+#      tested) are recorded as N, which understates true safety margins.
+#   4. No citations are attached to individual values.
+#
+# To make this table publication-ready, every chemical needs: source database,
+# chemical record URL or EPA ECOTOX query parameters, test species, test
+# duration, selected endpoint with rationale, and citation. Plan ~4-8 hours
+# of careful database work, ideally done collaboratively with a toxicology
+# partner.
+#
 # Avian acute oral LD50 in mg/kg body weight (Northern Bobwhite, Colinus
-# virginianus, where available; else Mallard or other surrogate). Sources:
-# EPA ECOTOX, Hertfordshire PPDB. These are *representative* values — the same
-# active ingredient can have multiple LD50 records depending on test conditions.
+# virginianus, where available; else Mallard or other surrogate).
 #
 # IMPORTANT INTERPRETATION CAVEAT
 # -------------------------------
@@ -133,8 +173,9 @@ CHEMICAL_CLASSES: dict[str, list[str]] = {
 # very low avian toxicity but extreme aquatic invertebrate toxicity.
 #
 # The bird LD50 weighting below is therefore best read as a direct-mortality
-# proxy. A second pass with prey-toxicity weighting would tell a meaningfully
-# different story and is worth doing for the actual proposal.
+# proxy. A second pass with prey-toxicity weighting (the AQUATIC_LC50_UG_PER_L
+# table below) tells a meaningfully different story and is generally more
+# relevant for the aerial-insectivore question.
 #
 # Lower LD50 = more toxic per unit mass.
 # Values marked ">N" are reported as greater than the test ceiling — actual
@@ -200,15 +241,23 @@ AVIAN_LD50_MG_PER_KG: dict[str, float] = {
 
 
 # ---------------------------------------------------------------------------
-# AQUATIC INVERTEBRATE TOXICITY REFERENCE — ILLUSTRATIVE DEFAULTS
+# AQUATIC INVERTEBRATE TOXICITY REFERENCE — ILLUSTRATIVE DEFAULTS (NOT FOR PUBLICATION)
 # ---------------------------------------------------------------------------
 #
-# Daphnia magna 48-hour acute LC50 in μg/L (micrograms per liter).
-# Sources: EPA ECOTOX, Hertfordshire PPDB. As with the avian table, these are
-# illustrative defaults — verify before publication.
+# *** SAME WARNING AS THE AVIAN LD50 TABLE ABOVE ***
 #
-# WHY THIS MATTERS
-# ----------------
+# The values in this table are ILLUSTRATIVE DEFAULTS suitable only for
+# internal exploratory analysis. They are NOT properly sourced and must NOT
+# be used externally without re-sourcing. See the warning block above the
+# avian LD50 table for the full caveat. Pyrethroid LC50 in particular varies
+# by 1-2 orders of magnitude across published studies depending on test
+# conditions, formulation, and Daphnia age class — proper sourcing for this
+# class is especially important.
+#
+# Daphnia magna 48-hour acute LC50 in μg/L (micrograms per liter).
+#
+# WHY THIS METRIC MATTERS
+# -----------------------
 # Aerial insectivores (birds and bats) feed predominantly on flying insects,
 # many of which have aquatic larval stages (chironomids, mayflies, caddisflies)
 # or are otherwise affected by surface-water and edge-of-field contamination.
@@ -217,6 +266,12 @@ AVIAN_LD50_MG_PER_KG: dict[str, float] = {
 # show 4–6 orders of magnitude difference between avian and aquatic endpoints:
 # permethrin's avian LD50 is ~9847 mg/kg (low direct bird toxicity) but its
 # Daphnia LC50 is ~0.6 μg/L (extreme aquatic invert toxicity).
+#
+# CAVEAT: Daphnia magna is a freshwater zooplankton, not a flying insect
+# larva. It is the EPA standard surrogate for "aquatic invertebrate toxicity"
+# but the actual aerial-insectivore prey base includes chironomids, mayflies,
+# and other dipteran/ephemeropteran larvae. Toxicity rankings are usually
+# similar but not identical across these taxa.
 #
 # Lower LC50 = more toxic per unit concentration.
 # Toxicity Units = lbs / LC50 — same formula as avian, but vastly different
@@ -541,11 +596,17 @@ def make_chart(summary: pd.DataFrame, value_col: str, out_path: Path) -> None:
     ax = axes[0]
     ax.stackplot(pivot.index, pivot.T.values / scale, labels=pivot.columns, alpha=0.85)
     ax.axvline(2020.5, color="black", linestyle="--", linewidth=1, alpha=0.6)
-    ax.text(2020.55, ax.get_ylim()[1] * 0.95, "2020 neonic restrictions",
+    # Add 15% headroom so the legend and the regulation annotation don't overlap
+    cur_top = ax.get_ylim()[1]
+    ax.set_ylim(0, cur_top * 1.15)
+    # Pin annotation and legend to axes coordinates so they never collide
+    ax.text(2020.6, 0.78, "2020 neonic\nrestrictions",
+            transform=ax.get_xaxis_transform(),
             fontsize=9, va="top", ha="left", alpha=0.7)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
-    ax.legend(loc="upper right", fontsize=8, ncol=2)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0),
+              fontsize=8, frameon=False)
     ax.grid(True, alpha=0.3)
 
     prop = pivot.div(pivot.sum(axis=1), axis=0) * 100
@@ -559,7 +620,7 @@ def make_chart(summary: pd.DataFrame, value_col: str, out_path: Path) -> None:
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(out_path, dpi=150)
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  chart -> {out_path}")
 
