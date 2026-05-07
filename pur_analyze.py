@@ -304,12 +304,16 @@ UDC_USECOLS = ["chem_code", "lbs_chm_used", "acre_treated", "site_code"]
 
 def aggregate_year(zip_path: Path, year: int,
                    code_to_class: dict[int, str],
+                   code_to_name: dict[int, str],
                    tox_avian: dict[int, float],
                    tox_aquatic: dict[int, float],
-                   ag_site_codes: set[int] | None) -> pd.DataFrame:
-    """Returns one row per (year, class) with sums of lbs, acres, records,
-    and toxicity-weighted lbs for both avian (lbs/LD50) and aquatic
-    invertebrate (lbs/LC50) endpoints."""
+                   ag_site_codes: set[int] | None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Returns (class_df, chem_df).
+
+    class_df: one row per (year, class) with sums of lbs, acres, records,
+    and toxicity-weighted lbs for both avian and aquatic endpoints.
+    chem_df: one row per (year, chemname) for Carbamates only, with lbs
+    and avian toxicity units — for per-chemical carbamate breakdown."""
 
     classes = sorted(set(code_to_class.values()))
     accumulator: dict[str, dict[str, float]] = {
@@ -318,6 +322,7 @@ def aggregate_year(zip_path: Path, year: int,
               "n_records": 0}
         for cls in classes
     }
+    chem_accum: dict[str, dict[str, float]] = {}
     target_codes = set(code_to_class.keys())
 
     with zipfile.ZipFile(zip_path) as zf:
@@ -378,6 +383,12 @@ def aggregate_year(zip_path: Path, year: int,
                         aquatic_v = tox_aquatic.get(int(code))
                         if aquatic_v and aquatic_v > 0:
                             accumulator[cls]["tox_aquatic"] += lbs / aquatic_v
+                        if cls == "Carbamates":
+                            name = code_to_name.get(int(code), str(int(code)))
+                            entry = chem_accum.setdefault(name, {"lbs": 0.0, "tox_avian": 0.0})
+                            entry["lbs"] += lbs
+                            if avian_v and avian_v > 0:
+                                entry["tox_avian"] += lbs / avian_v
 
             if i % 10 == 0 or i == len(udc_names):
                 print(f"      processed {i}/{len(udc_names)} county files")
@@ -391,7 +402,13 @@ def aggregate_year(zip_path: Path, year: int,
          "n_records": vals["n_records"]}
         for cls, vals in accumulator.items()
     ]
-    return pd.DataFrame(rows)
+    chem_rows = [
+        {"year": year, "chemname": name,
+         "lbs_active_ingredient": vals["lbs"],
+         "toxicity_units_avian_ld50": vals["tox_avian"]}
+        for name, vals in chem_accum.items()
+    ]
+    return pd.DataFrame(rows), pd.DataFrame(chem_rows)
 
 
 # ---------------------------------------------------------------------------
@@ -407,12 +424,17 @@ CHART_TITLES = {
                                   "Toxicity units (lbs ÷ avian LD50)", 1.0),
     "toxicity_units_aquatic_lc50": ("Aquatic-invertebrate-LC50-weighted insecticide load",
                                     "Toxicity units (lbs ÷ Daphnia EC50)", 1.0),
+    "carbamate_avian_by_chem": ("Carbamate avian-LD50-weighted load — per chemical",
+                                "Toxicity units (lbs ÷ avian LD50)", 1.0),
+    "carbamate_lbs_by_chem": ("Carbamate use by chemical (lbs AI)",
+                              "Thousand lbs AI", 1e3),
 }
 
 
-def make_chart(summary: pd.DataFrame, value_col: str, out_path: Path) -> None:
-    title, ylabel, scale = CHART_TITLES[value_col]
-    pivot = summary.pivot_table(index="year", columns="class",
+def make_chart(summary: pd.DataFrame, value_col: str, out_path: Path,
+               pivot_col: str = "class", title_key: str | None = None) -> None:
+    title, ylabel, scale = CHART_TITLES[title_key or value_col]
+    pivot = summary.pivot_table(index="year", columns=pivot_col,
                                 values=value_col, aggfunc="sum").fillna(0.0).sort_index()
     if pivot.empty or pivot.sum().sum() == 0:
         print(f"  [skip] {value_col}: no data")
@@ -455,8 +477,9 @@ def make_chart(summary: pd.DataFrame, value_col: str, out_path: Path) -> None:
     print(f"  chart -> {out_path}")
 
 
-def print_pivot(summary: pd.DataFrame, value_col: str, label: str) -> None:
-    pivot = summary.pivot_table(index="year", columns="class",
+def print_pivot(summary: pd.DataFrame, value_col: str, label: str,
+                pivot_col: str = "class") -> None:
+    pivot = summary.pivot_table(index="year", columns=pivot_col,
                                 values=value_col, aggfunc="sum").fillna(0.0)
     if pivot.empty or pivot.sum().sum() == 0:
         return
@@ -534,11 +557,15 @@ def main() -> int:
     # Step 5: aggregate per year
     print("\nStep 5: aggregate UDC data")
     yearly: list[pd.DataFrame] = []
+    yearly_chem: list[pd.DataFrame] = []
     for year, zp in sorted(zip_paths.items()):
         print(f"  [{year}] aggregating ...")
-        df = aggregate_year(zp, year, code_to_class, tox_avian, tox_aquatic, ag_site_codes)
+        df, chem_df = aggregate_year(zp, year, code_to_class, code_to_name,
+                                     tox_avian, tox_aquatic, ag_site_codes)
         if not df.empty:
             yearly.append(df)
+            if not chem_df.empty:
+                yearly_chem.append(chem_df)
             print(f"    total lbs AI: {df['lbs_active_ingredient'].sum():,.0f} | "
                   f"total acres: {df['acres_treated'].sum():,.0f}")
 
@@ -574,6 +601,24 @@ def main() -> int:
         print(f"  csv  -> {OUTPUT_DIR / csv_name}")
         make_chart(summary, value_col, OUTPUT_DIR / chart_name)
         print_pivot(summary, value_col, label)
+
+    # Carbamate per-chemical breakdown
+    if TOXICITY_WEIGHTING and yearly_chem:
+        chem_summary = pd.concat(yearly_chem, ignore_index=True)
+        chem_summary.to_csv(OUTPUT_DIR / "pur_yearly_carbamate_by_chem.csv", index=False)
+        print(f"\n  csv  -> {OUTPUT_DIR / 'pur_yearly_carbamate_by_chem.csv'}")
+        make_chart(chem_summary, "toxicity_units_avian_ld50",
+                   OUTPUT_DIR / "pur_chart_carbamate_avian_by_chem.png",
+                   pivot_col="chemname", title_key="carbamate_avian_by_chem")
+        make_chart(chem_summary, "lbs_active_ingredient",
+                   OUTPUT_DIR / "pur_chart_carbamate_lbs_by_chem.png",
+                   pivot_col="chemname", title_key="carbamate_lbs_by_chem")
+        print_pivot(chem_summary, "toxicity_units_avian_ld50",
+                    "CARBAMATE AVIAN-LD50-WEIGHTED TOXICITY UNITS — PER CHEMICAL",
+                    pivot_col="chemname")
+        print_pivot(chem_summary, "lbs_active_ingredient",
+                    "CARBAMATE LBS AI — PER CHEMICAL",
+                    pivot_col="chemname")
 
     return 0
 
