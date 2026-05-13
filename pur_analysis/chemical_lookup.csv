@@ -1,0 +1,44 @@
+chem_code,chemname,class
+105,CARBARYL,Carbamates
+106,CARBOFURAN,Carbamates
+198,DIAZINON,Organophosphates
+216,DIMETHOATE,Organophosphates
+253,CHLORPYRIFOS,Organophosphates
+314,AZINPHOS-METHYL,Organophosphates
+335,PHOSMET,Organophosphates
+367,MALATHION,Organophosphates
+382,OXYDEMETON-METHYL,Organophosphates
+383,METHOMYL,Carbamates
+418,NALED,Organophosphates
+478,PHORATE,Organophosphates
+575,ALDICARB,Carbamates
+1685,ACEPHATE,Organophosphates
+1689,METHIDATHION,Organophosphates
+1910,OXAMYL,Carbamates
+2008,PERMETHRIN,Pyrethroids
+2171,CYPERMETHRIN,Pyrethroids
+2195,TAU-FLUVALINATE,Pyrethroids
+2223,CYFLUTHRIN,Pyrethroids
+2234,FENPROPATHRIN,Pyrethroids
+2297,LAMBDA-CYHALOTHRIN,Pyrethroids
+2300,BIFENTHRIN,Pyrethroids
+2321,ESFENVALERATE,Pyrethroids
+2329,TRALOMETHRIN,Pyrethroids
+3010,DELTAMETHRIN,Pyrethroids
+3849,IMIDACLOPRID,Restricted neonics
+3866,ZETA-CYPERMETHRIN,Pyrethroids
+3956,BETA-CYFLUTHRIN,Pyrethroids
+3983,SPINOSAD,Spinosyns
+5598,THIAMETHOXAM,Restricted neonics
+5762,ACETAMIPRID,Other neonics
+5792,CLOTHIANIDIN,Restricted neonics
+5822,DINOTEFURAN,Restricted neonics
+5877,GAMMA-CYHALOTHRIN,Pyrethroids
+5888,THIACLOPRID,Other neonics
+5946,SPINETORAM,Spinosyns
+5948,FLUBENDIAMIDE,Diamides
+5964,CHLORANTRANILIPROLE,Diamides
+6072,CYANTRANILIPROLE,Diamides
+6098,FLUPYRADIFURONE,Next-gen systemics
+6109,SULFOXAFLOR,Next-gen systemics
+6330,TETRANILIPROLE,Diamides
