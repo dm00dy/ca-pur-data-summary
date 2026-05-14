@@ -1,0 +1,14 @@
+# Large data files — not committed
+data/
+
+# Large derived parquet (reproducible from PUR ZIPs)
+outputs/pur_sections.parquet
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Misc
+.DS_Store
