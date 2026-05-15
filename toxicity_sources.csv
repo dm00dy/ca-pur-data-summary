@@ -1,0 +1,45 @@
+chemical,class,avian_source,avian_url,aquatic_source,aquatic_url,flags
+acephate,Organophosphates,PPDB #9,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/9.htm,PPDB #9,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/9.htm,Mallard surrogate (avian)
+acetamiprid,Other neonics,PPDB #11,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/11.htm,PPDB #11,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/11.htm,Mallard surrogate (avian)
+aldicarb,Carbamates,PPDB #19,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/19.htm,PPDB #19,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/19.htm,Mallard surrogate (avian)
+azinphos-methyl,Organophosphates,PPDB #51,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/51.htm,PPDB #51,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/51.htm,
+beta-cyfluthrin,Pyrethroids,ECOTOX (PMC3090753),https://cfpub.epa.gov/ecotox/,PPDB #74,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/74.htm,PPDB avian value non-guideline (formulated product; canary); ECOTOX Bobwhite >2000 mg/kg used
+bifenthrin,Pyrethroids,PPDB #78,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/78.htm,PPDB #78,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/78.htm,
+carbaryl,Carbamates,PPDB #115,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/115.htm,PMID 26549316,https://pubmed.ncbi.nlm.nih.gov/26549316/,Avian ceiling >2000 mg/kg (mallard); PPDB has no D. magna 48h EC50 — literature value used for aquatic
+carbofuran,Carbamates,PPDB #118,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/118.htm,PPDB #118,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/118.htm,Mallard surrogate (avian)
+chlorantraniliprole,Diamides,PPDB #1138,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1138.htm,PPDB #1138,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1138.htm,Avian ceiling >2250 mg/kg
+chlorpyrifos,Organophosphates,PPDB #154,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/154.htm,PPDB #154,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/154.htm,
+clothianidin,Restricted neonics,PPDB #171,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/171.htm,PPDB #171,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/171.htm,Aquatic ceiling >40000 ug/L
+cyantraniliprole,Diamides,PPDB #1662,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1662.htm,PPDB #1662,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1662.htm,Avian ceiling >2250 mg/kg; aquatic ceiling >20 ug/L
+cyfluthrin,Pyrethroids,PPDB #192,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/192.htm,PPDB #192,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/192.htm,Avian ceiling >2000 mg/kg
+cypermethrin,Pyrethroids,PPDB #197,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/197.htm,PPDB #197,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/197.htm,Avian ceiling >9520 mg/kg
+deltamethrin,Pyrethroids,PPDB #205,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/205.htm,PPDB #205,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/205.htm,Avian ceiling >2250 mg/kg
+diazinon,Organophosphates,PPDB #212,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/212.htm,PPDB #212,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/212.htm,Mallard surrogate (avian)
+dimethoate,Organophosphates,PPDB #244,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/244.htm,PPDB #244,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/244.htm,
+dinotefuran,Restricted neonics,PPDB #1195,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1195.htm,PPDB #1195,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1195.htm,Avian ceiling >2000 mg/kg (Japanese quail); aquatic ceiling >968300 ug/L
+esfenvalerate,Pyrethroids,PPDB #269,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/269.htm,PPDB #269,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/269.htm,
+fenpropathrin,Pyrethroids,PPDB #306,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/306.htm,PPDB #306,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/306.htm,Mallard surrogate (avian); aquatic ceiling >0.53 ug/L
+flubendiamide,Diamides,PPDB #1132,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1132.htm,PPDB #1132,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1132.htm,Avian ceiling >2000 mg/kg
+flupyradifurone,Next-gen systemics,PPDB #2620,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/2620.htm,PPDB #2620,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/2620.htm,Aquatic ceiling >77600 ug/L
+gamma-cyhalothrin,Pyrethroids,PPDB #369,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/369.htm,PPDB #369,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/369.htm,Avian ceiling >2000 mg/kg (mallard)
+imidacloprid,Restricted neonics,PPDB #397,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/397.htm,PPDB #397,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/397.htm,Japanese quail surrogate (avian)
+lambda-cyhalothrin,Pyrethroids,PPDB #415,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/415.htm,PPDB #415,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/415.htm,Avian ceiling >3950 mg/kg (mallard)
+malathion,Organophosphates,PPDB #421,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/421.htm,PPDB #421,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/421.htm,
+methidathion,Organophosphates,PPDB #456,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/456.htm,PPDB #456,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/456.htm,Mallard surrogate (avian)
+methomyl,Carbamates,PPDB #458,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/458.htm,PPDB #458,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/458.htm,
+naled,Organophosphates,PPDB #480,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/480.htm,PPDB #480,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/480.htm,Avian ceiling >52 mg/kg (mallard); low test dose — actual LD50 may be higher
+nitenpyram,Other neonics,PPDB #1612,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1612.htm,PPDB #1612,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1612.htm,Mallard surrogate (avian)
+oxamyl,Carbamates,PPDB #498,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/498.htm,PPDB #498,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/498.htm,Mallard surrogate (avian); highly toxic to birds (3.16 mg/kg)
+oxydemeton-methyl,Organophosphates,PPDB #501,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/501.htm,PPDB #501,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/501.htm,
+permethrin,Pyrethroids,PPDB #515,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/515.htm,PPDB #515,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/515.htm,Avian ceiling >9800 mg/kg (mallard)
+phorate,Organophosphates,PPDB #519,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/519.htm,PPDB #519,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/519.htm,Mallard surrogate (avian)
+phosmet,Organophosphates,PPDB #521,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/521.htm,PPDB #521,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/521.htm,Avian ceiling >1068 mg/kg (mallard)
+spinosad,Spinosyns,BPDB #596,https://sitem.herts.ac.uk/aeru/bpdb/Reports/596.htm,BPDB #596,https://sitem.herts.ac.uk/aeru/bpdb/Reports/596.htm,BPDB not PPDB; avian ceiling >2000 mg/kg (mallard); aquatic ceiling >1000 ug/L
+spinetoram,Spinosyns,PPDB #1144,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1144.htm,PPDB #1144,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1144.htm,Avian ceiling >2250 mg/kg (mallard)
+sulfoxaflor,Next-gen systemics,PPDB #1669,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1669.htm,PPDB #1669,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/1669.htm,Aquatic ceiling >399000 ug/L
+tau-fluvalinate,Pyrethroids,PPDB #608,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/608.htm,PPDB #608,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/608.htm,Avian ceiling >2510 mg/kg; aquatic 8.9 ug/L is UK CRD regulatory study — 3-source conflict documented in toxicity_lookup.csv notes
+tetraniliprole,Diamides,PPDB #3190 (class estimate),https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/3190.htm,PPDB #3190,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/3190.htm,FLAG: avian LD50 is class-based estimate — no empirical data in PPDB; verify from EPA registration review before submission
+thiacloprid,Other neonics,APVMA PRS,https://www.apvma.gov.au/sites/default/files/publication/14066-prs-thiacloprid.pdf,PPDB #630,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/630.htm,No oral LD50 in PPDB; APVMA value used (Bobwhite 2716 mg/kg OECD up-and-down); aquatic ceiling >85100 ug/L
+thiamethoxam,Restricted neonics,PPDB #631,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/631.htm,PPDB #631,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/631.htm,Mallard surrogate (avian); aquatic ceiling >100000 ug/L
+tralomethrin,Pyrethroids,PPDB #647,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/647.htm,PPDB #647,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/647.htm,Avian ceiling >2510 mg/kg (Phasianidae family — non-standard surrogate; no Bobwhite or mallard value found); aquatic from L3 reference source
+zeta-cypermethrin,Pyrethroids,PPDB #682,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/682.htm,PPDB #682,https://sitem.herts.ac.uk/aeru/ppdb/en/Reports/682.htm,Avian ceiling >5124 mg/kg (mallard)

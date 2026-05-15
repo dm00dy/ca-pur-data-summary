@@ -1,0 +1,2 @@
+species_code,common_name,season,modeled_region,start_year,end_year,start_date,end_date,rsquared,beta0
+nrwswa,Northern Rough-winged Swallow,breeding,north_america,2012,2022,05-24,07-12,0.8973483034433423,0.08644938466672644

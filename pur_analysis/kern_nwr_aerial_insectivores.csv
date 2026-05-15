@@ -1,0 +1,292 @@
+year,month,date,loc,speciesCode,species,count
+2015,5,2015-05-01,Kern NWR,cliswa,Cliff Swallow,10
+2015,5,2015-05-01,Kern NWR,treswa,Tree Swallow,4
+2015,5,2015-05-03,Kern NWR,cliswa,Cliff Swallow,1
+2015,5,2015-05-15,Kern NWR,cliswa,Cliff Swallow,1
+2015,5,2015-05-19,Kern NWR,treswa,Tree Swallow,1
+2015,5,2015-05-19,Kern NWR,cliswa,Cliff Swallow,1
+2015,5,2015-05-27,Kern NWR,cliswa,Cliff Swallow,50
+2016,5,2016-05-03,Kern NWR,treswa,Tree Swallow,15
+2016,5,2016-05-03,Kern NWR,cliswa,Cliff Swallow,140
+2016,5,2016-05-16,Kern NWR,treswa,Tree Swallow,8
+2016,5,2016-05-16,Kern NWR,nrwswa,Northern Rough-winged Swallow,10
+2016,5,2016-05-16,Kern NWR,cliswa,Cliff Swallow,20
+2016,5,2016-05-23,Kern NWR,cliswa,Cliff Swallow,3
+2016,5,2016-05-26,Kern NWR,cliswa,Cliff Swallow,15
+2016,5,2016-05-27,Kern NWR,nrwswa,Northern Rough-winged Swallow,20
+2016,5,2016-05-27,Kern NWR,cliswa,Cliff Swallow,100
+2016,5,2016-05-27,Kern NWR,treswa,Tree Swallow,10
+2016,5,2016-05-28,Kern NWR,cliswa,Cliff Swallow,175
+2016,5,2016-05-28,Kern NWR,barswa,Barn Swallow,50
+2017,5,2017-05-02,Kern NWR,cliswa,Cliff Swallow,20
+2017,5,2017-05-05,Kern NWR,treswa,Tree Swallow,12
+2017,5,2017-05-05,Kern NWR,cliswa,Cliff Swallow,15
+2017,5,2017-05-08,Kern NWR,treswa,Tree Swallow,8
+2017,5,2017-05-08,Kern NWR,cliswa,Cliff Swallow,1
+2017,5,2017-05-13,Kern NWR,cliswa,Cliff Swallow,50
+2017,5,2017-05-20,Kern NWR,treswa,Tree Swallow,1
+2017,5,2017-05-20,Kern NWR,nrwswa,Northern Rough-winged Swallow,15
+2017,5,2017-05-20,Kern NWR,cliswa,Cliff Swallow,150
+2017,5,2017-05-31,Kern NWR,cliswa,Cliff Swallow,308
+2018,5,2018-05-02,Kern NWR,treswa,Tree Swallow,57
+2018,5,2018-05-02,Kern NWR,cliswa,Cliff Swallow,75
+2018,5,2018-05-05,Kern NWR,cliswa,Cliff Swallow,30
+2018,5,2018-05-12,Kern NWR,cliswa,Cliff Swallow,50
+2018,5,2018-05-20,Kern NWR,cliswa,Cliff Swallow,150
+2018,5,2018-05-28,Kern NWR,cliswa,Cliff Swallow,1
+2019,5,2019-05-02,Kern NWR,cliswa,Cliff Swallow,30
+2019,5,2019-05-03,Kern NWR,cliswa,Cliff Swallow,30
+2019,5,2019-05-06,Kern NWR,treswa,Tree Swallow,8
+2019,5,2019-05-06,Kern NWR,cliswa,Cliff Swallow,10
+2019,5,2019-05-08,Kern NWR,cliswa,Cliff Swallow,1
+2019,5,2019-05-08,Kern NWR,treswa,Tree Swallow,1
+2019,5,2019-05-09,Kern NWR,nrwswa,Northern Rough-winged Swallow,15
+2019,5,2019-05-09,Kern NWR,cliswa,Cliff Swallow,20
+2019,5,2019-05-10,Kern NWR,cliswa,Cliff Swallow,40
+2019,5,2019-05-16,Kern NWR,cliswa,Cliff Swallow,4
+2019,5,2019-05-16,Kern NWR,treswa,Tree Swallow,1
+2019,5,2019-05-20,Kern NWR,barswa,Barn Swallow,1
+2019,5,2019-05-20,Kern NWR,cliswa,Cliff Swallow,200
+2019,5,2019-05-21,Kern NWR,cliswa,Cliff Swallow,1
+2019,5,2019-05-21,Kern NWR,treswa,Tree Swallow,1
+2019,5,2019-05-22,Kern NWR,barswa,Barn Swallow,2
+2019,5,2019-05-22,Kern NWR,cliswa,Cliff Swallow,200
+2019,5,2019-05-23,Kern NWR,cliswa,Cliff Swallow,60
+2019,5,2019-05-25,Kern NWR,cliswa,Cliff Swallow,100
+2019,5,2019-05-28,Kern NWR,treswa,Tree Swallow,1
+2019,5,2019-05-28,Kern NWR,cliswa,Cliff Swallow,150
+2019,5,2019-05-29,Kern NWR,cliswa,Cliff Swallow,10
+2020,5,2020-05-01,Kern NWR,treswa,Tree Swallow,10
+2020,5,2020-05-01,Kern NWR,barswa,Barn Swallow,2
+2020,5,2020-05-01,Kern NWR,cliswa,Cliff Swallow,30
+2020,5,2020-05-02,Kern NWR,treswa,Tree Swallow,11
+2020,5,2020-05-02,Kern NWR,barswa,Barn Swallow,7
+2020,5,2020-05-02,Kern NWR,cliswa,Cliff Swallow,40
+2020,5,2020-05-06,Kern NWR,treswa,Tree Swallow,12
+2020,5,2020-05-06,Kern NWR,cliswa,Cliff Swallow,25
+2020,5,2020-05-10,Kern NWR,treswa,Tree Swallow,9
+2020,5,2020-05-10,Kern NWR,cliswa,Cliff Swallow,10
+2020,5,2020-05-13,Kern NWR,cliswa,Cliff Swallow,250
+2020,5,2020-05-14,Kern NWR,treswa,Tree Swallow,1
+2020,5,2020-05-14,Kern NWR,cliswa,Cliff Swallow,30
+2020,5,2020-05-16,Kern NWR,treswa,Tree Swallow,4
+2020,5,2020-05-16,Kern NWR,cliswa,Cliff Swallow,150
+2020,5,2020-05-17,Kern NWR,cliswa,Cliff Swallow,150
+2020,5,2020-05-18,Kern NWR,cliswa,Cliff Swallow,200
+2020,5,2020-05-20,Kern NWR,cliswa,Cliff Swallow,100
+2020,5,2020-05-21,Kern NWR,cliswa,Cliff Swallow,30
+2020,5,2020-05-22,Kern NWR,treswa,Tree Swallow,5
+2020,5,2020-05-22,Kern NWR,cliswa,Cliff Swallow,60
+2020,5,2020-05-26,Kern NWR,cliswa,Cliff Swallow,300
+2020,5,2020-05-27,Kern NWR,cliswa,Cliff Swallow,250
+2021,5,2021-05-02,Kern NWR,cliswa,Cliff Swallow,14
+2021,5,2021-05-02,Kern NWR,treswa,Tree Swallow,2
+2021,5,2021-05-04,Kern NWR,treswa,Tree Swallow,2
+2021,5,2021-05-04,Kern NWR,cliswa,Cliff Swallow,40
+2021,5,2021-05-05,Kern NWR,treswa,Tree Swallow,2
+2021,5,2021-05-05,Kern NWR,nrwswa,Northern Rough-winged Swallow,1
+2021,5,2021-05-05,Kern NWR,barswa,Barn Swallow,2
+2021,5,2021-05-05,Kern NWR,cliswa,Cliff Swallow,10
+2021,5,2021-05-05,Kern NWR,banswa,Bank Swallow,1
+2021,5,2021-05-06,Kern NWR,treswa,Tree Swallow,1
+2021,5,2021-05-06,Kern NWR,cliswa,Cliff Swallow,33
+2021,5,2021-05-09,Kern NWR,treswa,Tree Swallow,10
+2021,5,2021-05-09,Kern NWR,barswa,Barn Swallow,1
+2021,5,2021-05-09,Kern NWR,cliswa,Cliff Swallow,60
+2021,5,2021-05-10,Kern NWR,treswa,Tree Swallow,1
+2021,5,2021-05-10,Kern NWR,cliswa,Cliff Swallow,300
+2021,5,2021-05-11,Kern NWR,nrwswa,Northern Rough-winged Swallow,1
+2021,5,2021-05-11,Kern NWR,cliswa,Cliff Swallow,73
+2021,5,2021-05-13,Kern NWR,cliswa,Cliff Swallow,17
+2021,5,2021-05-15,Kern NWR,cliswa,Cliff Swallow,1
+2021,5,2021-05-15,Kern NWR,treswa,Tree Swallow,1
+2021,5,2021-05-15,Kern NWR,nrwswa,Northern Rough-winged Swallow,3
+2021,5,2021-05-18,Kern NWR,treswa,Tree Swallow,3
+2021,5,2021-05-18,Kern NWR,barswa,Barn Swallow,1
+2021,5,2021-05-18,Kern NWR,cliswa,Cliff Swallow,200
+2021,5,2021-05-30,Kern NWR,treswa,Tree Swallow,3
+2021,5,2021-05-30,Kern NWR,cliswa,Cliff Swallow,80
+2022,5,2022-05-04,Kern NWR,cliswa,Cliff Swallow,50
+2022,5,2022-05-04,Kern NWR,treswa,Tree Swallow,1
+2022,5,2022-05-04,Kern NWR,barswa,Barn Swallow,2
+2022,5,2022-05-08,Kern NWR,cliswa,Cliff Swallow,60
+2022,5,2022-05-25,Kern NWR,cliswa,Cliff Swallow,60
+2022,5,2022-05-26,Kern NWR,cliswa,Cliff Swallow,50
+2022,5,2022-05-29,Kern NWR,barswa,Barn Swallow,10
+2023,5,2023-05-03,Kern NWR,treswa,Tree Swallow,46
+2023,5,2023-05-03,Kern NWR,cliswa,Cliff Swallow,60
+2023,5,2023-05-03,Kern NWR,nrwswa,Northern Rough-winged Swallow,3
+2023,5,2023-05-09,Kern NWR,cliswa,Cliff Swallow,30
+2023,5,2023-05-10,Kern NWR,treswa,Tree Swallow,8
+2023,5,2023-05-10,Kern NWR,cliswa,Cliff Swallow,125
+2023,5,2023-05-12,Kern NWR,cliswa,Cliff Swallow,25
+2023,5,2023-05-17,Kern NWR,cliswa,Cliff Swallow,200
+2023,5,2023-05-18,Kern NWR,barswa,Barn Swallow,1
+2023,5,2023-05-18,Kern NWR,cliswa,Cliff Swallow,100
+2023,5,2023-05-18,Kern NWR,banswa,Bank Swallow,1
+2023,5,2023-05-18,Kern NWR,treswa,Tree Swallow,1
+2023,5,2023-05-18,Kern NWR,nrwswa,Northern Rough-winged Swallow,1
+2023,5,2023-05-22,Kern NWR,cliswa,Cliff Swallow,1
+2024,5,2024-05-03,Kern NWR,treswa,Tree Swallow,12
+2024,5,2024-05-03,Kern NWR,vigswa,Violet-green Swallow,30
+2024,5,2024-05-03,Kern NWR,barswa,Barn Swallow,50
+2024,5,2024-05-03,Kern NWR,cliswa,Cliff Swallow,50
+2024,5,2024-05-05,Kern NWR,cliswa,Cliff Swallow,1
+2024,5,2024-05-05,Kern NWR,treswa,Tree Swallow,7
+2024,5,2024-05-05,Kern NWR,barswa,Barn Swallow,1
+2024,5,2024-05-05,Kern NWR,nrwswa,Northern Rough-winged Swallow,1
+2024,5,2024-05-07,Kern NWR,cliswa,Cliff Swallow,1
+2024,5,2024-05-12,Kern NWR,treswa,Tree Swallow,1
+2024,5,2024-05-12,Kern NWR,cliswa,Cliff Swallow,180
+2024,5,2024-05-15,Kern NWR,cliswa,Cliff Swallow,50
+2024,5,2024-05-16,Kern NWR,cliswa,Cliff Swallow,1
+2024,5,2024-05-18,Kern NWR,treswa,Tree Swallow,4
+2024,5,2024-05-18,Kern NWR,barswa,Barn Swallow,1
+2024,5,2024-05-18,Kern NWR,cliswa,Cliff Swallow,205
+2024,5,2024-05-19,Kern NWR,cliswa,Cliff Swallow,400
+2024,5,2024-05-23,Kern NWR,cliswa,Cliff Swallow,175
+2024,5,2024-05-24,Kern NWR,cliswa,Cliff Swallow,50
+2024,5,2024-05-24,Kern NWR,banswa,Bank Swallow,5
+2024,5,2024-05-27,Kern NWR,cliswa,Cliff Swallow,410
+2024,5,2024-05-30,Kern NWR,cliswa,Cliff Swallow,25
+2024,5,2024-05-31,Kern NWR,cliswa,Cliff Swallow,300
+2025,5,2025-05-02,Kern NWR,treswa,Tree Swallow,14
+2025,5,2025-05-02,Kern NWR,cliswa,Cliff Swallow,80
+2025,5,2025-05-03,Kern NWR,banswa,Bank Swallow,1
+2025,5,2025-05-03,Kern NWR,cliswa,Cliff Swallow,25
+2025,5,2025-05-03,Kern NWR,treswa,Tree Swallow,16
+2025,5,2025-05-03,Kern NWR,barswa,Barn Swallow,2
+2025,5,2025-05-03,Kern NWR,nrwswa,Northern Rough-winged Swallow,1
+2025,5,2025-05-04,Kern NWR,treswa,Tree Swallow,15
+2025,5,2025-05-04,Kern NWR,cliswa,Cliff Swallow,125
+2025,5,2025-05-04,Kern NWR,banswa,Bank Swallow,1
+2025,5,2025-05-04,Kern NWR,nrwswa,Northern Rough-winged Swallow,1
+2025,5,2025-05-04,Kern NWR,barswa,Barn Swallow,40
+2025,5,2025-05-07,Kern NWR,cliswa,Cliff Swallow,10
+2025,5,2025-05-08,Kern NWR,nrwswa,Northern Rough-winged Swallow,4
+2025,5,2025-05-08,Kern NWR,cliswa,Cliff Swallow,155
+2025,5,2025-05-12,Kern NWR,cliswa,Cliff Swallow,60
+2025,5,2025-05-13,Kern NWR,treswa,Tree Swallow,2
+2025,5,2025-05-13,Kern NWR,nrwswa,Northern Rough-winged Swallow,5
+2025,5,2025-05-13,Kern NWR,barswa,Barn Swallow,20
+2025,5,2025-05-13,Kern NWR,cliswa,Cliff Swallow,100
+2025,5,2025-05-14,Kern NWR,cliswa,Cliff Swallow,38
+2025,5,2025-05-15,Kern NWR,cliswa,Cliff Swallow,76
+2025,5,2025-05-16,Kern NWR,cliswa,Cliff Swallow,1
+2025,5,2025-05-25,Kern NWR,cliswa,Cliff Swallow,1
+2025,5,2025-05-26,Kern NWR,cliswa,Cliff Swallow,1
+2025,5,2025-05-26,Kern NWR,barswa,Barn Swallow,2
+2025,5,2025-05-31,Kern NWR,cliswa,Cliff Swallow,3
+2018,5,2018-05-12,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,50
+2019,5,2019-05-08,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,1
+2019,5,2019-05-16,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,4
+2019,5,2019-05-21,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,1
+2019,5,2019-05-29,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,10
+2021,5,2021-05-02,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,14
+2021,5,2021-05-11,Kern NWR--North Auto Tour,nrwswa,Northern Rough-winged Swallow,1
+2021,5,2021-05-11,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,73
+2021,5,2021-05-13,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,17
+2021,5,2021-05-15,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,1
+2023,5,2023-05-18,Kern NWR--North Auto Tour,barswa,Barn Swallow,1
+2023,5,2023-05-18,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,100
+2024,5,2024-05-03,Kern NWR--North Auto Tour,treswa,Tree Swallow,12
+2024,5,2024-05-03,Kern NWR--North Auto Tour,vigswa,Violet-green Swallow,30
+2024,5,2024-05-03,Kern NWR--North Auto Tour,barswa,Barn Swallow,50
+2024,5,2024-05-03,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,50
+2024,5,2024-05-24,Kern NWR--North Auto Tour,banswa,Bank Swallow,5
+2024,5,2024-05-24,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,200
+2025,5,2025-05-03,Kern NWR--North Auto Tour,treswa,Tree Swallow,4
+2025,5,2025-05-03,Kern NWR--North Auto Tour,barswa,Barn Swallow,2
+2025,5,2025-05-03,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,63
+2025,5,2025-05-12,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,30
+2025,5,2025-05-31,Kern NWR--North Auto Tour,cliswa,Cliff Swallow,3
+2015,5,2015-05-03,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,1
+2016,5,2016-05-03,Kern NWR--South Auto Tour,treswa,Tree Swallow,15
+2016,5,2016-05-03,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,140
+2016,5,2016-05-27,Kern NWR--South Auto Tour,treswa,Tree Swallow,10
+2016,5,2016-05-28,Kern NWR--South Auto Tour,barswa,Barn Swallow,50
+2017,5,2017-05-05,Kern NWR--South Auto Tour,treswa,Tree Swallow,12
+2017,5,2017-05-05,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,15
+2017,5,2017-05-13,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,50
+2017,5,2017-05-20,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2017,5,2017-05-20,Kern NWR--South Auto Tour,nrwswa,Northern Rough-winged Swallow,15
+2017,5,2017-05-20,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,150
+2018,5,2018-05-05,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,30
+2018,5,2018-05-12,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,85
+2019,5,2019-05-06,Kern NWR--South Auto Tour,treswa,Tree Swallow,8
+2019,5,2019-05-06,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,10
+2019,5,2019-05-08,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2019,5,2019-05-08,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,1
+2019,5,2019-05-09,Kern NWR--South Auto Tour,nrwswa,Northern Rough-winged Swallow,15
+2019,5,2019-05-09,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,20
+2019,5,2019-05-10,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,40
+2019,5,2019-05-16,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2019,5,2019-05-16,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,79
+2019,5,2019-05-21,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,1
+2019,5,2019-05-21,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2019,5,2019-05-28,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2019,5,2019-05-28,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,150
+2020,5,2020-05-10,Kern NWR--South Auto Tour,treswa,Tree Swallow,9
+2020,5,2020-05-10,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,10
+2020,5,2020-05-13,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,250
+2020,5,2020-05-14,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2020,5,2020-05-14,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,30
+2020,5,2020-05-17,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,150
+2020,5,2020-05-18,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,200
+2020,5,2020-05-20,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,100
+2020,5,2020-05-21,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,30
+2020,5,2020-05-22,Kern NWR--South Auto Tour,treswa,Tree Swallow,5
+2020,5,2020-05-22,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,60
+2020,5,2020-05-26,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,300
+2020,5,2020-05-27,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,250
+2021,5,2021-05-02,Kern NWR--South Auto Tour,treswa,Tree Swallow,2
+2021,5,2021-05-02,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,40
+2021,5,2021-05-06,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2021,5,2021-05-06,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,33
+2021,5,2021-05-10,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2021,5,2021-05-10,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,300
+2021,5,2021-05-15,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2021,5,2021-05-15,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,4
+2021,5,2021-05-15,Kern NWR--South Auto Tour,nrwswa,Northern Rough-winged Swallow,3
+2021,5,2021-05-30,Kern NWR--South Auto Tour,treswa,Tree Swallow,3
+2021,5,2021-05-30,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,80
+2022,5,2022-05-25,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,60
+2022,5,2022-05-29,Kern NWR--South Auto Tour,barswa,Barn Swallow,10
+2023,5,2023-05-10,Kern NWR--South Auto Tour,treswa,Tree Swallow,8
+2023,5,2023-05-10,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,125
+2023,5,2023-05-17,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,200
+2023,5,2023-05-18,Kern NWR--South Auto Tour,banswa,Bank Swallow,1
+2023,5,2023-05-18,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2023,5,2023-05-18,Kern NWR--South Auto Tour,nrwswa,Northern Rough-winged Swallow,1
+2023,5,2023-05-18,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,150
+2023,5,2023-05-22,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,1
+2024,5,2024-05-05,Kern NWR--South Auto Tour,treswa,Tree Swallow,5
+2024,5,2024-05-05,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,40
+2024,5,2024-05-07,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,1
+2024,5,2024-05-12,Kern NWR--South Auto Tour,treswa,Tree Swallow,1
+2024,5,2024-05-12,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,180
+2024,5,2024-05-16,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,1
+2024,5,2024-05-18,Kern NWR--South Auto Tour,treswa,Tree Swallow,4
+2024,5,2024-05-18,Kern NWR--South Auto Tour,barswa,Barn Swallow,1
+2024,5,2024-05-18,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,205
+2024,5,2024-05-24,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,50
+2024,5,2024-05-27,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,410
+2025,5,2025-05-02,Kern NWR--South Auto Tour,treswa,Tree Swallow,14
+2025,5,2025-05-02,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,80
+2025,5,2025-05-03,Kern NWR--South Auto Tour,banswa,Bank Swallow,1
+2025,5,2025-05-03,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,25
+2025,5,2025-05-03,Kern NWR--South Auto Tour,treswa,Tree Swallow,16
+2025,5,2025-05-04,Kern NWR--South Auto Tour,treswa,Tree Swallow,15
+2025,5,2025-05-04,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,125
+2025,5,2025-05-07,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,10
+2025,5,2025-05-08,Kern NWR--South Auto Tour,nrwswa,Northern Rough-winged Swallow,4
+2025,5,2025-05-08,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,155
+2025,5,2025-05-13,Kern NWR--South Auto Tour,treswa,Tree Swallow,2
+2025,5,2025-05-13,Kern NWR--South Auto Tour,nrwswa,Northern Rough-winged Swallow,5
+2025,5,2025-05-13,Kern NWR--South Auto Tour,barswa,Barn Swallow,20
+2025,5,2025-05-13,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,100
+2025,5,2025-05-14,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,38
+2025,5,2025-05-16,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,1
+2025,5,2025-05-26,Kern NWR--South Auto Tour,barswa,Barn Swallow,2
+2025,5,2025-05-26,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,50
+2025,5,2025-05-31,Kern NWR--South Auto Tour,cliswa,Cliff Swallow,125

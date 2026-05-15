@@ -14,8 +14,8 @@ Given a range of years, the script:
 4. Produces summary CSVs and stacked-area charts for four metrics:
    - Pounds of active ingredient applied
    - Acres treated
-   - Avian-LD50-weighted toxicity units (illustrative — see caveats)
-   - Daphnia-LC50-weighted toxicity units (illustrative — see caveats)
+   - Avian-LD50-weighted toxicity units
+   - Daphnia-LC50-weighted toxicity units
 
 The four metrics tell meaningfully different stories. Total California agricultural insecticide use dropped 41% by pounds and 70% by aquatic toxicity between 2015 and 2023, but only 12% by acres treated — the same landscape footprint is being treated with newer, lower-rate-per-acre chemistries.
 
@@ -30,13 +30,11 @@ For ecological risk questions, no single metric is sufficient:
 
 Pyrethroids in particular show 4–6 orders of magnitude difference between avian and aquatic endpoints, so the choice of toxicity reference materially affects which class looks most concerning.
 
-## Important caveat: toxicity values are illustrative
+## Toxicity reference values
 
-The avian LD50 and aquatic LC50 reference tables in the script are **illustrative defaults suitable only for internal exploratory analysis**. They are not properly sourced from EPA ECOTOX, Hertfordshire PPDB, or any other documented database. Do not use the toxicity-weighted outputs in publications, grant proposals, or agency reports without first replacing the reference tables with documented values.
+The avian LD50 and aquatic LC50 values in `toxicity_lookup.csv` are sourced from the Hertfordshire PPDB as primary source and cross-checked against EPA ECOTOX, covering all 44 insecticide active ingredients present in the California PUR data. Endpoint definitions: acute oral LD50 (mg/kg, 14-day mortality, Bobwhite preferred) for avian; *Daphnia magna* 48h EC50 (μg/L) for aquatic invertebrates. Ceiling values (reported as ">N") are stored as N (conservative floor) and flagged with boolean columns in the CSV.
 
-The pounds and acres outputs are sourced directly from CDPR PUR and are publication-suitable with appropriate caveats about data resolution and the difference between application records and environmental exposure.
-
-See the comment blocks at the top of `pur_substitution_analysis.py` for the full disclaimer and what proper sourcing requires.
+Pounds and acres outputs are sourced directly from CDPR PUR and are publication-suitable with appropriate caveats about data resolution and the difference between application records and environmental exposure.
 
 ## Installation
 
@@ -55,7 +53,7 @@ If you're on a system with PEP 668 protection (modern Ubuntu, macOS with Homebre
 ## Usage
 
 ```bash
-python pur_substitution_analysis.py
+python pur_analyze.py
 ```
 
 The script downloads data on first run and caches it. Subsequent runs reuse the cache. To force a re-download, delete the `pur_analysis/cache/` directory.

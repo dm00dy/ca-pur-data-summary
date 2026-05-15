@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aerial Insectivore Trends and Pesticide Use — San Joaquin Valley</title>
+<style>
+  /* ── Typography & layout ─────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Georgia", "Times New Roman", serif;
+    font-size: 16px;
+    line-height: 1.7;
+    color: #1a1a1a;
+    background: #fff;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 3rem 2rem 5rem;
+  }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  header {
+    border-bottom: 2px solid #2c2c2c;
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  header .kicker {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 0.6rem;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    line-height: 1.25;
+    font-weight: normal;
+    margin-bottom: 0.75rem;
+  }
+
+  .subtitle {
+    font-size: 1.05rem;
+    color: #444;
+    font-style: italic;
+    margin-bottom: 1rem;
+  }
+
+  .byline {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.85rem;
+    color: #555;
+  }
+
+  .byline span { font-weight: 600; color: #222; }
+
+  /* ── Sections ────────────────────────────────────────────── */
+  section { margin-bottom: 2.5rem; }
+
+  h2 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.3rem;
+    margin-bottom: 1rem;
+    margin-top: 2rem;
+  }
+
+  h3 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #444;
+    margin-top: 1.4rem;
+    margin-bottom: 0.4rem;
+  }
+
+  p { margin-bottom: 0.9rem; }
+
+  /* ── Abstract box ────────────────────────────────────────── */
+  .abstract {
+    background: #f6f6f4;
+    border-left: 4px solid #2c7bb6;
+    padding: 1.1rem 1.4rem;
+    margin-bottom: 2.5rem;
+    font-size: 0.93rem;
+  }
+
+  .abstract strong {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #2c7bb6;
+  }
+
+  /* ── Figures ─────────────────────────────────────────────── */
+  figure {
+    margin: 2rem 0;
+    padding: 1rem 0;
+    border-top: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  figure img {
+    width: 100%;
+    display: block;
+    margin-bottom: 0.6rem;
+  }
+
+  figcaption {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.82rem;
+    color: #444;
+    line-height: 1.5;
+  }
+
+  figcaption .fig-label {
+    font-weight: 700;
+    color: #1a1a1a;
+  }
+
+  /* ── Key findings callout ────────────────────────────────── */
+  .callout {
+    background: #fff8e6;
+    border-left: 4px solid #d4a017;
+    padding: 0.9rem 1.2rem;
+    margin: 1.5rem 0;
+    font-size: 0.92rem;
+  }
+
+  .callout strong {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #a07010;
+  }
+
+  /* ── Data table ──────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.2rem 0;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.85rem;
+  }
+
+  th {
+    text-align: left;
+    background: #f0f0f0;
+    padding: 0.4rem 0.7rem;
+    border-bottom: 2px solid #ccc;
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #333;
+  }
+
+  td {
+    padding: 0.38rem 0.7rem;
+    border-bottom: 1px solid #e5e5e5;
+    color: #222;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  .sig { color: #c0392b; font-weight: 700; }
+
+  /* ── References ──────────────────────────────────────────── */
+  .references ol {
+    padding-left: 1.5rem;
+    font-size: 0.86rem;
+    line-height: 1.6;
+  }
+
+  .references li { margin-bottom: 0.55rem; }
+
+  /* ── Caveats / limitations box ───────────────────────────── */
+  .limitations {
+    background: #f9f0f0;
+    border-left: 4px solid #c0392b;
+    padding: 0.9rem 1.2rem;
+    margin: 1.5rem 0;
+    font-size: 0.91rem;
+  }
+
+  .limitations strong {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #a02020;
+  }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.78rem;
+    color: #888;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">Preliminary Analysis &mdash; Point Blue Conservation Science</div>
+  <h1>Aerial Insectivore Trends and Agricultural Pesticide Use<br>in California's San Joaquin Valley</h1>
+  <div class="subtitle">A Level 1 exposure characterization supporting a proposed CDPR Ecosystem Monitoring study</div>
+  <div class="byline">
+    <span>Doug Moody</span> &amp; <span>Dennis Jongsomjit</span> &mdash; Point Blue Conservation Science &mdash; May 2026
+  </div>
+</header>
+
+<!-- ── ABSTRACT ─────────────────────────────────────────────── -->
+<div class="abstract">
+  <strong>Summary</strong>
+  California's 2019 chlorpyrifos cancellation provides a natural experiment for examining
+  how pesticide regime shifts affect non-target wildlife. Analysis of California Department
+  of Pesticide Regulation (CDPR) use data from 2015–2023 shows that the organophosphate
+  collapse was followed by a compositional shift in the agricultural insecticide load:
+  pyrethroids now account for roughly 77% of the aquatic invertebrate toxicity burden,
+  up from 28% in 2015. A partial substitution toward oxamyl — a carbamate approximately
+  ten times more acutely toxic to birds than chlorpyrifos — is concentrated in Kings County
+  cotton. Separately, eBird Status &amp; Trends data (2012–2022) show that five aerial
+  insectivore species breeding in the San Joaquin Valley declined at 1–2% per year over
+  this period. Notably, declines appear across two distinct foraging guilds (continuous
+  aerial foragers and sallying flycatchers), which is consistent with — though not
+  attributable to — prey-base disruption. A county-level spatial correlation between
+  pyrethroid use increase and bird abundance trends yields a weak negative signal for
+  Tree Swallow and null results for three other swallow species. These patterns, taken
+  together, motivate a targeted field study capable of making finer-grained causal
+  inferences than remote data alone can support.
+</div>
+
+<!-- ── 1. INTRODUCTION ─────────────────────────────────────── -->
+<section>
+<h2>1. Introduction</h2>
+
+<p>Aerial insectivores — birds that capture flying invertebrates on the wing — have
+declined more steeply than most other North American bird guilds over the past five
+decades (Rosenberg et al. 2019, Nebel et al. 2010). Li et al. (2020), using county-level
+panel data across 2,200 U.S. counties, found that increases in neonicotinoid pesticide use
+between 2008 and 2014 were associated with statistically significant declines in
+insectivorous bird diversity, consistent with prey-base suppression as a contributing
+mechanism. Multiple additional mechanisms have been proposed, including changes in
+breeding and wintering habitat and climate-mediated phenological mismatches. Distinguishing among these requires both robust exposure data and
+spatially matched biological monitoring, neither of which has been systematically
+collected for California's most productive agricultural landscapes.</p>
+
+<p>California's San Joaquin Valley presents an unusual opportunity. The valley concentrates
+a large fraction of California's agricultural pesticide use, supports breeding populations
+of at least nine aerial insectivore species, and in 2019 experienced a near-complete
+withdrawal of chlorpyrifos — at the time the state's dominant agricultural insecticide —
+following CDPR's cancellation order. This regulatory event functions as a quasi-natural
+experiment: exposure did not simply decrease, it shifted in character, with growers
+adopting alternative chemistries that differ substantially in their toxicological profiles
+for both aquatic invertebrates and birds.</p>
+
+<p>This document summarizes a preliminary analysis of CDPR Pesticide Use Report (PUR)
+data and eBird Status &amp; Trends (S&amp;T) trend estimates for the San Joaquin Valley /
+Kern County region. The goal is to characterize the direction and magnitude of changes
+in pesticide toxicity load and to examine whether those changes are spatially associated
+with aerial insectivore population trends — not to claim attribution, but to assess
+whether the patterns are coherent enough to warrant a targeted field investigation.</p>
+</section>
+
+<!-- ── 2. METHODS ──────────────────────────────────────────── -->
+<section>
+<h2>2. Methods</h2>
+
+<h3>2.1 Pesticide use data</h3>
+<p>Annual pesticide use records were obtained from the CDPR PUR database for
+2015–2023. Records were filtered to agricultural applications using CDPR site codes
+(&lt;65,000), yielding 9 years of county-level use data for all 58 California counties.
+Fourteen insecticide active ingredients were extracted and grouped by chemical class
+(organophosphates, pyrethroids, carbamates, neonicotinoids, and others). Raw application
+mass (pounds of active ingredient, lbs AI) was used for volume trends; toxicity-weighted
+loads were computed as lbs AI ÷ published LC50 (aquatic: <i>Daphnia magna</i> 48h EC50
+in μg/L; avian: acute oral LD50 in mg/kg). Toxicity values were sourced from the
+University of Hertfordshire Pesticide Properties DataBase (PPDB; Lewis et al. 2016) as
+primary reference and cross-checked against the U.S. EPA ECOTOX Knowledgebase.</p>
+
+<h3>2.2 Bird abundance trends</h3>
+<p>Breeding-season abundance trend estimates were extracted from eBird Status &amp; Trends
+2022 Data Products (Fink et al. 2023) using the <code>ebirdst</code> R package.
+Trends are expressed as annual proportional change in relative abundance
+(<i>abd_ppy</i>, % per year) modeled over 2012–2022 at the scale of ~27 km grid cells.
+Cells were filtered to two focal regions: the San Joaquin Valley / Kern County area
+(lon −120.5 to −118.0, lat 34.8 to 36.8) and the Sacramento Valley rice corridor
+(lon −122.5 to −121.0, lat 38.5 to 40.5) as a reference comparison. Nine aerial
+insectivore species recorded at Kern National Wildlife Refuge eBird hotspots were
+targeted; trend data were available for seven of these (Lesser Nighthawk and Bank
+Swallow lacked sufficient trend coverage in the SJV).</p>
+
+<h3>2.3 Spatial correlation analysis</h3>
+<p>For the four swallow species with sufficient SJV cell coverage, a county-level
+pyrethroid delta was computed (mean annual lbs AI, 2021–2023 minus 2015–2018) from
+the PUR data and spatially joined to S&amp;T grid cells using county polygon boundaries
+(U.S. Census TIGER/Line shapefiles via the <code>tigris</code> R package). Analysis
+was restricted to 32 agricultural counties to reduce confounding from urban pyrethroid
+use patterns. Pearson correlation was computed between county-level pyrethroid change
+and cell-level <i>abd_ppy</i> for each species.</p>
+</section>
+
+<!-- ── 3. RESULTS ──────────────────────────────────────────── -->
+<section>
+<h2>3. Results</h2>
+
+<h3>3.1 Pesticide use: a shift in toxicological character, not just volume</h3>
+
+<p>Total agricultural insecticide application in California declined substantially over
+the study period, driven almost entirely by the chlorpyrifos cancellation. Statewide
+chlorpyrifos use fell from roughly 1.1 million lbs AI per year in 2015 to near zero by
+2020 — a 98% reduction concentrated in a single growing season (Figure 1, top panel).
+This loss was not offset by comparable growth in any single replacement chemistry,
+and total toxicity-weighted load to aquatic invertebrates dropped by approximately two-thirds
+between 2015 and 2019.</p>
+
+<p>However, the compositional story is more complex. Because chlorpyrifos had relatively
+modest aquatic toxicity per pound compared to pyrethroids, its removal disproportionately
+benefited aquatic invertebrates less than the raw volume decline suggests. Pyrethroids —
+already present throughout the study period — increased their share of the
+toxicity-weighted load from approximately 28% in 2015 to 77% in 2023, even as their
+absolute use in lbs AI declined modestly (Figure 1, bottom panel). In practical terms,
+the agricultural insecticide environment became substantially more hazardous to aquatic
+invertebrates on a per-pound basis.</p>
+
+<figure>
+  <img src="pur_analysis/pur_chart_toxicity_aquatic.png"
+       alt="Aquatic toxicity-weighted insecticide load, 2015–2023">
+  <figcaption>
+    <span class="fig-label">Figure 1.</span> Aquatic invertebrate toxicity-weighted
+    insecticide load for California agriculture, 2015–2023. <i>Top:</i> absolute toxicity
+    units (lbs AI ÷ <i>Daphnia magna</i> 48h EC50), stacked by chemical class.
+    The organophosphate (blue) area collapses 2018–2019, corresponding to the chlorpyrifos
+    cancellation; total load declines by ~65%. <i>Bottom:</i> compositional share of
+    total toxicity load. Despite the volume reduction, pyrethroid share grew from ~28% to
+    ~77%, reflecting pyrethroids' much higher aquatic toxicity per unit mass. Toxicity
+    values from Hertfordshire PPDB (Lewis et al. 2016); PUR data from CDPR.
+  </figcaption>
+</figure>
+
+<h3>3.2 Partial substitution: chlorpyrifos toward oxamyl</h3>
+
+<p>Within the carbamate class, a separate pattern emerged that has implications for avian
+toxicity rather than aquatic toxicity. Oxamyl — registered primarily for cotton, potatoes,
+and cucurbits — increased from approximately 18,000 to 88,000 lbs AI statewide between
+2016 and 2019, coinciding with the chlorpyrifos phase-out period (Figure 2). Use has
+remained elevated through 2023. Approximately 75% of California's oxamyl use is
+concentrated in Kings County, suggesting the signal is driven largely by San Joaquin
+Valley cotton production.</p>
+
+<p>This matters disproportionately for avian toxicity. Oxamyl's acute oral LD50 in
+Bobwhite Quail is 3.16 mg/kg, placing it in the "extremely toxic" category; chlorpyrifos
+LD50 is 32 mg/kg, roughly ten times less acutely toxic to birds on a per-pound basis.
+If oxamyl use genuinely displaced chlorpyrifos in the same fields and for similar target
+pests, the avian toxicity burden from carbamates may have increased even as the
+organophosphate burden fell. Whether growers, field staff, or non-target wildlife are
+actually exposed at biologically significant levels is unknown.</p>
+
+<figure>
+  <img src="pur_analysis/pur_substitution_statewide.png"
+       alt="Chlorpyrifos decline and oxamyl adoption, California agriculture 2015–2023">
+  <figcaption>
+    <span class="fig-label">Figure 2.</span> Statewide annual use of chlorpyrifos and
+    oxamyl in California agriculture, 2015–2023 (thousand lbs AI, agricultural sites only).
+    The shaded region marks the chlorpyrifos phase-out window. Oxamyl increased ~5× between
+    2016 and 2019 and has remained elevated, consistent with partial substitution in
+    San Joaquin Valley cotton. Note the ordinal scale difference: oxamyl at its peak is
+    about 10% of chlorpyrifos at its pre-cancellation peak, but is ~10× more acutely toxic
+    to birds per pound. PUR data from CDPR.
+  </figcaption>
+</figure>
+
+<h3>3.3 Bird abundance trends: consistent declines across the San Joaquin Valley</h3>
+
+<p>eBird S&amp;T trend estimates (2012–2022) for seven aerial insectivore species in the
+San Joaquin Valley show a consistent pattern of modest but widespread decline. Median
+annual abundance change ranges from −2.1%/yr (Barn Swallow) to +1.0%/yr (Purple Martin),
+with five of seven species showing negative median trends (Table 1, Figure 3).</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Species</th>
+      <th>Guild</th>
+      <th>SJV cells (n)</th>
+      <th>abd_ppy (%/yr)</th>
+      <th>95% CI</th>
+      <th>% cells declining</th>
+      <th>10-yr projected</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Barn Swallow</td>
+      <td>Continuous</td>
+      <td>49</td>
+      <td class="sig">−2.14</td>
+      <td>−3.25, −0.71</td>
+      <td>96%</td>
+      <td>−19%</td>
+    </tr>
+    <tr>
+      <td>Cliff Swallow</td>
+      <td>Continuous</td>
+      <td>66</td>
+      <td>−1.52</td>
+      <td>−3.31, +0.07</td>
+      <td>91%</td>
+      <td>−14%</td>
+    </tr>
+    <tr>
+      <td>Western Kingbird</td>
+      <td>Sallying</td>
+      <td>68</td>
+      <td class="sig">−1.49</td>
+      <td>−2.77, −0.15</td>
+      <td>78%</td>
+      <td>−14%</td>
+    </tr>
+    <tr>
+      <td>Tree Swallow</td>
+      <td>Continuous</td>
+      <td>51</td>
+      <td>−1.10</td>
+      <td>−2.78, +0.67</td>
+      <td>76%</td>
+      <td>−10%</td>
+    </tr>
+    <tr>
+      <td>N. Rough-winged Swallow</td>
+      <td>Continuous</td>
+      <td>60</td>
+      <td>−0.30</td>
+      <td>−1.91, +1.46</td>
+      <td>62%</td>
+      <td>−3%</td>
+    </tr>
+    <tr>
+      <td>White-throated Swift</td>
+      <td>Continuous</td>
+      <td>56</td>
+      <td>−0.13</td>
+      <td>−1.69, +1.71</td>
+      <td>52%</td>
+      <td>−1%</td>
+    </tr>
+    <tr>
+      <td>Purple Martin</td>
+      <td>Continuous</td>
+      <td>12</td>
+      <td>+0.98</td>
+      <td>−2.33, +2.84</td>
+      <td>33%</td>
+      <td>+10%</td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="font-family: Helvetica Neue, Arial, sans-serif; font-size: 0.78rem; color: #555; margin-top: -0.5rem; margin-bottom: 1rem;">
+  <i>Red values indicate 95% CI entirely below zero. "10-yr projected" is the
+  compounded effect of the median annual trend. abd_ppy = annual proportional change
+  in relative abundance, eBird S&amp;T 2022 Trends Products (Fink et al. 2023).</i>
+</p>
+
+<figure>
+  <img src="pur_analysis/chart_expanded_species.png"
+       alt="Breeding season abundance trends for aerial insectivores, San Joaquin Valley 2012–2022">
+  <figcaption>
+    <span class="fig-label">Figure 3.</span> Median annual abundance trend (abd_ppy,
+    % per year) for seven aerial insectivore species breeding in the San Joaquin Valley /
+    Kern County region, eBird Status &amp; Trends 2012–2022. Error bars show median 95%
+    confidence interval. Species are color-coded by foraging guild: blue = continuous
+    aerial foragers (swallows, swifts); red = sallying flycatcher (Western Kingbird).
+    Five of seven species show negative median trends. Point counts in parentheses indicate
+    the number of ~27 km S&amp;T grid cells within the study region. Source: Fink et al.
+    (2023); chart by Point Blue.
+  </figcaption>
+</figure>
+
+<div class="callout">
+  <strong>Note on foraging guilds</strong>
+  Western Kingbird captures prey by sallying from a perch — a fundamentally different
+  foraging mode from the continuous in-flight pursuit used by swallows and swifts. That
+  both guilds show similar decline rates in the same landscape is consistent with a
+  shared food-base effect rather than a foraging-behavior-specific cause (e.g.,
+  collision mortality, microhabitat loss specific to aerial foraging). This pattern is
+  suggestive but not conclusive; the species share breeding habitat and are subject to
+  the same large-scale pressures (climate, migratory pathways, wintering-ground conditions).
+</div>
+
+<h3>3.4 Cumulative trajectory and comparison with Sacramento Valley</h3>
+
+<p>Projecting the median S&amp;T trend forward illustrates the cumulative scale of the
+signal: if current rates persist, Barn Swallow and Cliff Swallow populations in the SJV
+would be roughly 19% and 14% lower, respectively, by 2022 relative to 2012 (Figure 4).
+These declines predate the chlorpyrifos cancellation and show no visible inflection around
+2019, consistent with a driver — or drivers — that operated continuously across the trend
+period rather than changing abruptly with the regulatory event.</p>
+
+<figure>
+  <img src="pur_analysis/chart_st_trajectory.png"
+       alt="Projected cumulative abundance change, San Joaquin Valley swallows 2012–2022">
+  <figcaption>
+    <span class="fig-label">Figure 4.</span> Projected cumulative abundance index
+    (2012 = 100%) for four swallow species in the San Joaquin Valley, derived from median
+    S&amp;T annual trend and compounded across the 2012–2022 trend period. Ribbons show
+    the range implied by the median confidence interval. The dotted line marks the
+    chlorpyrifos cancellation (2019). No obvious inflection is visible around 2019,
+    which is expected: the S&amp;T model fits a single linear trend over the full period
+    and cannot resolve pre/post differences. Source: Fink et al. (2023).
+  </figcaption>
+</figure>
+
+<p>For context, equivalent S&amp;T analyses were run for the Sacramento Valley rice
+corridor, a landscape with lower pyrethroid agricultural exposure and a different land
+cover composition. Decline rates there are broadly similar — Cliff Swallow −2.35%/yr
+(95% cells declining), Barn Swallow −1.73%/yr (100% cells declining), Tree Swallow
+−0.59%/yr — suggesting that large-scale drivers are operating across both regions.
+The Sacramento Valley comparison does not rule out an additional local pesticide
+contribution in the SJV, but it limits what can be inferred from the S&amp;T data alone.</p>
+
+<h3>3.5 Spatial correlation: pyrethroid exposure vs. bird trends</h3>
+
+<p>To test whether local pyrethroid exposure is associated with local bird trend
+intensity, S&amp;T grid cells were spatially joined to agricultural counties and
+linked to county-level pyrethroid use change (2015–2018 average versus 2021–2023
+average). Correlations between the pyrethroid delta and cell-level <i>abd_ppy</i>
+were computed for four swallow species across 32 agricultural counties (Figure 5).</p>
+
+<figure>
+  <img src="pur_analysis/chart_cell_correlation.png"
+       alt="County-level pyrethroid change vs. cell-level bird trend, four swallow species">
+  <figcaption>
+    <span class="fig-label">Figure 5.</span> County-level pyrethroid use change
+    (thousand lbs AI/yr, 2015–18 → 2021–23) versus cell-level annual abundance trend
+    (abd_ppy) for four swallow species across California agricultural counties.
+    Each point is one ~27 km S&amp;T grid cell; county pyrethroid change is assigned to
+    all cells within that county. A negative correlation would indicate greater declines
+    where pyrethroid use increased most. Source: CDPR PUR; Fink et al. (2023).
+  </figcaption>
+</figure>
+
+<p>Tree Swallow shows a small negative correlation consistent with the hypothesized
+direction (r = −0.18, p = 0.011); the three other species show null or slightly positive
+correlations (r = +0.09 to +0.11, all non-significant). The Tree Swallow result survives
+at p &lt; 0.05 but explains only 3% of variance. The positive correlations for Barn
+Swallow, Cliff Swallow, and Northern Rough-winged Swallow are counterintuitive and likely
+reflect confounding at the county level: counties with more intensive row-crop agriculture
+— which also use more pyrethroids — may offer relatively better foraging habitat for some
+swallow species than drier, less productive counties. This kind of ecological confounding
+is difficult to disentangle at county resolution. Li et al. (2020) detected significant
+neonicotinoid-bird diversity associations at this scale only through fixed-effects panel
+models applied to thousands of counties nationally; a cross-sectional correlation across
+~30 counties lacks comparable statistical power to resolve the signal.</p>
+
+<div class="limitations">
+  <strong>Limitations of the spatial correlation</strong>
+  The county-level join introduces substantial measurement error: pyrethroid applications
+  within a county are not uniformly distributed, and individual S&amp;T cells near field
+  edges are treated identically to cells in the county interior. The S&amp;T trend metric
+  integrates over 2012–2022 while the pyrethroid delta compares two 3–4 year windows;
+  these windows do not align perfectly in time. These are inherent constraints of
+  combining administrative-boundary pesticide records with species distribution models,
+  and motivate the case for field-level data collection.
+</div>
+</section>
+
+<!-- ── 4. DISCUSSION ───────────────────────────────────────── -->
+<section>
+<h2>4. Discussion</h2>
+
+<p>Taken together, these analyses suggest two things. First, the chemistry of California's
+agricultural insecticide environment shifted substantially after 2019 in ways that are
+plausibly worse for aerial insectivores through the prey-base pathway: higher pyrethroid
+toxicity share to aquatic invertebrates, and increased oxamyl use with high direct avian
+toxicity. Second, aerial insectivores are declining in the San Joaquin Valley at rates
+consistent with those observed elsewhere in North America, and the declines appear across
+two foraging guilds. Whether these two observations are causally related cannot be
+determined from the data at hand.</p>
+
+<p>The Sacramento Valley comparison is the most important caveat. If local pesticide
+exposure were driving regional population change in the SJV, one might expect weaker or
+absent declines in regions with lower exposure. Instead, Sacramento Valley shows declines
+of similar magnitude. This does not rule out a pesticide contribution in the SJV —
+both regions have substantial agricultural insecticide use, and the SJV's pyrethroid
+increase may simply add to an already declining trajectory — but it substantially weakens
+any claim that the S&amp;T trends are attributable to local pesticide patterns.</p>
+
+<p>The cross-guild pattern (swallows and Western Kingbird declining in parallel) adds
+a modest mechanistic constraint. Foraging mode is unlikely to be the determining factor
+in whatever is causing these declines, which points away from direct collision mortality
+or flight-specific energetics and toward something more broadly affecting aerial insect
+availability. Prey-base disruption from pesticides is one candidate, but climate-driven
+shifts in insect emergence phenology and landscape-level land-use change are equally
+plausible and are not separable from remote data.</p>
+
+<p>Bank Swallow, California state-listed as Threatened, was recorded at all three Kern
+NWR hotspots but has insufficient S&amp;T model coverage in the San Joaquin Valley to
+extract regional trends. Lesser Nighthawk, another regional aerial insectivore, has no
+S&amp;T trends estimates at all, likely because its nocturnal foraging habits make it
+poorly sampled by eBird checklists. Both species would benefit from direct monitoring
+effort.</p>
+</section>
+
+<!-- ── 5. PROPOSED NEXT STEPS ─────────────────────────────── -->
+<section>
+<h2>5. Proposed next steps</h2>
+
+<p>The most tractable field test of the prey-base hypothesis is a Before-After,
+Control-Impact (BACI) design using passive acoustic monitoring. The simplest version:</p>
+
+<ul style="margin: 0.8rem 0 0.8rem 1.5rem; line-height: 1.8;">
+  <li><strong>Treatment site:</strong> Kern National Wildlife Refuge and adjacent wetlands, San Joaquin Valley. High surrounding pyrethroid use; documented aerial insectivore breeding populations.</li>
+  <li><strong>Reference site:</strong> Sacramento Valley wetland (e.g., Colusa NWR or Sacramento NWR), lower pyrethroid exposure in adjacent matrix.</li>
+  <li><strong>Monitoring:</strong> AudioMoth autonomous recorders (~$80/unit), solar-powered, deployed at 4–6 points per site. BirdNET automated species identification applied to recordings.</li>
+  <li><strong>Exposure variable:</strong> CDPR PUR application records, linked to recorder locations by surrounding land use radius. The exposure data already exists — CDPR collects it. The study closes the loop by adding the biological response.</li>
+  <li><strong>Analysis:</strong> Daily detection rates as a function of application timing, site, weather covariates, and their interaction.</li>
+</ul>
+
+<p>This design tests whether bird vocal activity covaries with pesticide application
+events at fine temporal resolution — something the annual S&amp;T models cannot resolve.
+If a detectable signal emerges, mist-netting with blood and feather sampling (residue
+analysis, dietary profiling via stable isotopes) provides the mechanistic follow-up.
+If no signal is detected, that is also informative: it would suggest that either the
+relevant effect operates at spatial or temporal scales the design cannot capture, or
+that local pesticide exposure is not the primary driver of the observed population trends.</p>
+
+<figure>
+  <img src="pesticide_bird_conceptual_model.svg"
+       alt="Conceptual model: pesticide effects on birds across study levels"
+       style="width:100%; max-width:700px; display:block; margin:0 auto;">
+  <figcaption>
+    <span class="fig-label">Figure 6.</span> Conceptual model for the proposed
+    three-level monitoring study, developed by D. Jongsomjit (Point Blue). The causal
+    chain (top) runs from agricultural pesticide use through insect prey depletion to
+    bird community response, with management implications for CDPR. Three nested study
+    levels address different inferential scales: Level 1 (landscape) uses existing data
+    and panel models to identify which pesticide classes and geographic areas carry
+    the highest risk; Level 2 (site-scale) uses AudioMoth passive acoustic monitoring
+    and point counts along a pesticide-exposure gradient to detect acute behavioral and
+    abundance responses; Level 3 (individual) uses mist-netting and insect sampling at
+    sites identified by Levels 1 and 2 to confirm the prey-depletion mechanism.
+    Cross-scale validation tests whether guild-specific effect sizes, spatial risk zones,
+    and individual condition metrics are concordant across levels. Falsifiable predictions
+    (bottom) distinguish pesticide-mediated decline from generic population change.
+    Diagram: D. Jongsomjit / Point Blue Conservation Science.
+  </figcaption>
+</figure>
+</section>
+
+<!-- ── REFERENCES ─────────────────────────────────────────── -->
+<section class="references">
+<h2>References</h2>
+<ol>
+  <li>California Department of Fish and Wildlife. 2022. Special Animals List.
+      Sacramento, CA: California Department of Fish and Wildlife.</li>
+
+  <li>California Department of Pesticide Regulation (CDPR). 2024. Pesticide Use
+      Reporting (PUR) database. Sacramento, CA. Available at:
+      https://www.cdpr.ca.gov/docs/pur/purmain.htm</li>
+
+  <li>California Department of Pesticide Regulation (CDPR). 2019. Notice of Intent
+      to Cancel Registrations of Pesticide Products Containing Chlorpyrifos. Sacramento, CA.</li>
+
+  <li>Fink, D., T. Auer, A. Johnston, M. Strimas-Mackey, S. Ligocki, O. Robinson,
+      W. Hochachka, L. Jaromczyk, C. Crowley, K. Dunham, A. Stillman, I. Davies,
+      A. Rodewald, V. Ruiz-Gutierrez, and C. Wood. 2023. eBird Status and Trends,
+      Data Version: 2022; Released: 2023. Cornell Lab of Ornithology, Ithaca, New York.
+      https://doi.org/10.2173/ebirdst.2022</li>
+
+  <li>Fink, D., T. Auer, A. Johnston, M. Strimas-Mackey, S. Ligocki, O. Robinson,
+      W. Hochachka, L. Jaromczyk, C. Crowley, K. Dunham, A. Stillman, C. Davis,
+      M. Stokowski, P. Sharma, V. Pantoja, D. Burgin, P. Crowe, M. Bell, S. Ray,
+      I. Davies, V. Ruiz-Gutierrez, C. Wood, and A. Rodewald. 2024. eBird Status and
+      Trends, Data Version: 2023; Released: 2025. Cornell Lab of Ornithology, Ithaca,
+      New York. https://doi.org/10.2173/WZTW8903</li>
+
+  <li>Hallmann, C.A., R.P.B. Foppen, C.A.M. van Turnhout, H. de Kroon, and
+      E. Jongejans. 2014. Declines in insectivorous birds are associated with high
+      neonicotinoid concentrations. <i>Nature</i> 511:341–343.</li>
+
+  <li>Li, Y., R. Miao, and M. Khanna. 2020. Neonicotinoids and decline in bird
+      biodiversity in the United States. <i>Nature Sustainability</i> 3:1027–1035.
+      https://doi.org/10.1038/s41893-020-0582-x</li>
+
+  <li>Lewis, K.A., J. Tzilivakis, D.J. Warner, and A. Green. 2016. An international
+      database for pesticide risk assessments and management. <i>Human and Ecological
+      Risk Assessment</i> 22(4):1050–1064. [Hertfordshire PPDB:
+      https://sitem.herts.ac.uk/aeru/ppdb/]</li>
+
+  <li>Mineau, P., and C. Whiteside. 2013. Pesticide acute toxicity is a better
+      correlate of U.S. grassland bird declines than agricultural intensification.
+      <i>PLOS ONE</i> 8(2):e57457.</li>
+
+  <li>Nebel, S., A. Mills, J.D. McCracken, and P.D. Taylor. 2010. Declines of
+      aerial insectivores in North America follow a geographic gradient.
+      <i>Avian Conservation and Ecology</i> 5(2):1.</li>
+
+  <li>Rosenberg, K.V., A.M. Dokter, P.J. Blancher, J.R. Sauer, A.C. Smith,
+      P.A. Smith, J.C. Stanton, A. Panjabi, L. Helft, M. Parr, and P.P. Marra.
+      2019. Decline of the North American avifauna. <i>Science</i> 366:120–124.
+      https://doi.org/10.1126/science.aaw1313</li>
+
+  <li>Sauer, J.R., D.K. Niven, J.E. Hines, D.J. Ziolkowski Jr., K.L. Pardieck,
+      J.E. Fallon, and W.A. Link. 2017. The North American Breeding Bird Survey,
+      Results and Analysis 1966–2015. Patuxent Wildlife Research Center, Laurel, MD.</li>
+
+  <li>U.S. Environmental Protection Agency. 2024. ECOTOX Knowledgebase.
+      https://cfpub.epa.gov/ecotox/</li>
+</ol>
+</section>
+
+<footer>
+  Point Blue Conservation Science &mdash; Preliminary analysis, not for citation without author approval &mdash; May 2026<br>
+  PUR data: CDPR (2015–2023) &bull; Bird trends: eBird S&amp;T 2022 Products (Fink et al. 2023) &bull;
+  Toxicity: Hertfordshire PPDB &amp; EPA ECOTOX &bull; Analysis: Doug Moody, Point Blue
+</footer>
+
+</body>
+</html>

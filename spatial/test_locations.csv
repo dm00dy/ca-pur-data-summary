@@ -1,0 +1,4 @@
+location_id,latitude,longitude,survey_start_date,survey_end_date
+KERN_NWR_01,35.65,-119.37,2023-05-15,2023-06-15
+KERN_NWR_02,35.72,-119.28,2023-05-15,2023-06-15
+SJV_TEST_01,36.80,-120.20,2023-06-01,2023-07-01
