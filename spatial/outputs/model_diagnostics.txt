@@ -1,0 +1,16 @@
+=== Level 1 Model Diagnostics ===
+
+Data: 150 surveyed route-years, 28 routes
+Years: [np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]
+Primary exposure: 5 km / 90-day lag / aquatic tox units
+
+Pyr: mean=294.4  SD=550.9  min=0.0  max=2840.6
+OP:  mean=568.4  SD=1592.8  min=0.0  max=10599.2
+Pyr × OP Pearson r: 0.266
+
+Model A (mixed-effects) — All Swallows:
+  pyr β=+0.1896  p=0.0852
+  op  β=-0.0505  p=0.4766
+Model B (within-route) — All Swallows:
+  pyr β=+0.0536  p=0.2478
+  op  β=-0.0442  p=0.4998
