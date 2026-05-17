@@ -5,7 +5,7 @@ PUR Substitution Analysis
 
 Downloads California Department of Pesticide Regulation (CDPR) Pesticide Use
 Report (PUR) annual archives, aggregates agricultural insecticide use by
-chemical class and year, and produces a summary table and chart to assess
+chemical class and year, and produces summary tables and charts to assess
 whether California's 2020 neonicotinoid restrictions resulted in net reduction
 or substitution to other chemical classes.
 
@@ -27,24 +27,33 @@ UDC file fields of interest (comma-delimited, latin-1 encoding):
 
 Usage:
     pip install pandas requests matplotlib
-    python pur_substitution_analysis.py
+    python pur_analyze.py
 
 Outputs (in OUTPUT_DIR):
-    chemical_lookup.csv         - resolved chem_code -> class mapping
-    pur_yearly_by_class.csv     - long-format summary
-    pur_substitution_chart.png  - stacked area / line chart
+    chemical_lookup.csv              - resolved chem_code -> class mapping
+    pur_yearly_lbs_by_class.csv      - long-format summary, pounds applied
+    pur_yearly_acres_by_class.csv    - long-format summary, acres treated
+    pur_yearly_tox_avian_by_class.csv   - avian-LD50-weighted toxicity units
+    pur_yearly_tox_aquatic_by_class.csv - aquatic-LC50-weighted toxicity units
+    pur_chart_lbs.png                - stacked area chart, pounds
+    pur_chart_acres.png              - stacked area chart, acres
+    pur_chart_toxicity_avian.png     - stacked area chart, avian-weighted
+    pur_chart_toxicity_aquatic.png   - stacked area chart, aquatic-weighted
+
+Toxicity reference:
+    Avian endpoint: acute oral LD50 (mg/kg), Bobwhite preferred
+    Aquatic endpoint: Daphnia magna 48h EC50 (µg/L)
+    Source: Hertfordshire PPDB (primary), EPA ECOTOX (cross-check)
+    Values stored in toxicity_lookup.csv alongside the script.
 
 Author: Point Blue Conservation Science
 """
 
 from __future__ import annotations
 
-import io
 import sys
 import zipfile
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 import pandas as pd
 import requests
@@ -60,10 +69,6 @@ OUTPUT_DIR = Path("./pur_analysis")
 CACHE_DIR = OUTPUT_DIR / "cache"
 BASE_URL = "https://files.cdpr.ca.gov/pub/outgoing/pur_archives"
 
-# Restrict to agricultural use only. PUR's `record_id` field encodes ag vs nonag,
-# but the most reliable filter is the site_code -> ag flag in site.txt. For a
-# first-pass analysis we accept all records and rely on site filtering later if
-# needed. This keeps the script simple; tighten if numbers look suspicious.
 AG_ONLY = True  # set False to include all records
 
 # Chemical class definitions. Names are matched case-insensitively against the
@@ -170,18 +175,49 @@ def download_year(year: int) -> Path:
 # LOOKUP TABLES
 # ---------------------------------------------------------------------------
 
+def _load_toxicity_csv() -> tuple[dict[str, float], dict[str, float]]:
+    """Load toxicity constants from toxicity_lookup.csv.
+
+    Returns two dicts keyed by lowercase chemname:
+        avian   — acute oral LD50 (mg/kg)
+        aquatic — Daphnia magna 48h EC50 (µg/L)
+
+    Reads by column index rather than pd.read_csv because the notes column
+    (col 10+) contains unquoted commas that confuse the CSV parser.
+    """
+    csv_path = Path(__file__).parent / "toxicity_lookup.csv"
+    if not csv_path.exists():
+        sys.exit(f"ERROR: toxicity_lookup.csv not found at {csv_path}")
+
+    avian: dict[str, float] = {}
+    aquatic: dict[str, float] = {}
+    with open(csv_path, encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            if i == 0:
+                continue  # header
+            parts = line.rstrip("\n\r").split(",")
+            if len(parts) < 7:
+                continue
+            # col 0: chemname, col 2: avian_ld50_mg_per_kg, col 6: aquatic_lc50_ug_per_l
+            try:
+                avian[parts[0].strip().lower()] = float(parts[2])
+                aquatic[parts[0].strip().lower()] = float(parts[6])
+            except ValueError:
+                pass
+    return avian, aquatic
+
+
 def load_chemical_lookup(zip_path: Path) -> pd.DataFrame:
-    """Load chemical.txt from a PUR archive. Returns DataFrame with columns
-    [chem_code, chemname]."""
+    """Load chemical.txt from a PUR archive. Returns DataFrame with chem_code + chemname."""
     with zipfile.ZipFile(zip_path) as zf:
         names = [n for n in zf.namelist() if n.lower().endswith("chemical.txt")]
         if not names:
-            raise FileNotFoundError(f"chemical.txt not found in {zip_path}")
+            sys.exit(f"ERROR: chemical.txt not found in {zip_path}")
         with zf.open(names[0]) as f:
             df = pd.read_csv(f, encoding="latin-1", dtype=str)
     df.columns = [c.strip().lower() for c in df.columns]
     df["chem_code"] = pd.to_numeric(df["chem_code"], errors="coerce").astype("Int64")
-    df["chemname"] = df["chemname"].fillna("").str.strip()
+    df["chemname"] = df["chemname"].str.strip().str.lower()
     return df[["chem_code", "chemname"]].dropna(subset=["chem_code"])
 
 
@@ -238,14 +274,25 @@ UDC_DTYPES = {
 }
 
 
-def aggregate_year(zip_path: Path, year: int, code_to_class: dict[int, str],
-                   ag_site_codes: set[int] | None) -> pd.DataFrame:
+def aggregate_year(
+    zip_path: Path,
+    year: int,
+    code_to_class: dict[int, str],
+    ag_site_codes: set[int] | None,
+    code_to_avian: dict[int, float] | None = None,
+    code_to_aquatic: dict[int, float] | None = None,
+) -> pd.DataFrame:
     """Stream all udc*.txt files in the year archive, filter to chemicals of
-    interest, aggregate by class. Returns a DataFrame with one row per class."""
+    interest, aggregate by class. Returns a DataFrame with one row per class.
+
+    Toxicity units = lbs_ai / toxicity_value (avian: LD50 mg/kg; aquatic: LC50 µg/L).
+    A larger toxicity unit value means greater hazard load.
+    """
 
     classes = sorted(set(code_to_class.values()))
     accumulator: dict[str, dict[str, float]] = {
-        cls: {"lbs": 0.0, "acres": 0.0, "n_records": 0} for cls in classes
+        cls: {"lbs": 0.0, "acres": 0.0, "tox_avian": 0.0, "tox_aquatic": 0.0, "n_records": 0}
+        for cls in classes
     }
     target_codes = set(code_to_class.keys())
 
@@ -260,7 +307,6 @@ def aggregate_year(zip_path: Path, year: int, code_to_class: dict[int, str],
 
         for i, name in enumerate(udc_names, 1):
             with zf.open(name) as f:
-                # Stream in chunks; keep memory bounded
                 try:
                     reader = pd.read_csv(
                         f,
@@ -298,17 +344,34 @@ def aggregate_year(zip_path: Path, year: int, code_to_class: dict[int, str],
                         cls = code_to_class.get(int(code))
                         if cls is None:
                             continue
-                        accumulator[cls]["lbs"] += float(sub["lbs_chm_used"].sum())
+                        lbs = float(sub["lbs_chm_used"].sum())
+                        accumulator[cls]["lbs"] += lbs
                         accumulator[cls]["acres"] += float(sub["acre_treated"].sum())
                         accumulator[cls]["n_records"] += int(len(sub))
+
+                        if code_to_avian:
+                            av = code_to_avian.get(int(code))
+                            if av:
+                                accumulator[cls]["tox_avian"] += lbs / av
+
+                        if code_to_aquatic:
+                            aq = code_to_aquatic.get(int(code))
+                            if aq:
+                                accumulator[cls]["tox_aquatic"] += lbs / aq
 
             if i % 10 == 0 or i == len(udc_names):
                 print(f"      processed {i}/{len(udc_names)} county files")
 
     rows = [
-        {"year": year, "class": cls,
-         "lbs_ai": vals["lbs"], "acres_treated": vals["acres"],
-         "n_records": vals["n_records"]}
+        {
+            "year": year,
+            "class": cls,
+            "lbs_ai": vals["lbs"],
+            "acres_treated": vals["acres"],
+            "tox_units_avian": vals["tox_avian"],
+            "tox_units_aquatic": vals["tox_aquatic"],
+            "n_records": vals["n_records"],
+        }
         for cls, vals in accumulator.items()
     ]
     return pd.DataFrame(rows)
@@ -318,11 +381,20 @@ def aggregate_year(zip_path: Path, year: int, code_to_class: dict[int, str],
 # REPORTING
 # ---------------------------------------------------------------------------
 
-def make_chart(summary: pd.DataFrame, out_path: Path) -> None:
-    """Two-panel chart: absolute lbs by class (stacked area), and proportional
-    composition (stacked area, normalized)."""
+def make_chart(
+    summary: pd.DataFrame,
+    value_col: str,
+    ylabel: str,
+    title: str,
+    out_path: Path,
+    scale: float = 1.0,
+    vline_x: float = 2018.5,
+    vline_label: str = "2019 chlorpyrifos phase-out",
+) -> None:
+    """Two-panel chart: absolute metric by class (stacked area), and proportional
+    composition (stacked area, normalized to 100%)."""
 
-    pivot = summary.pivot_table(index="year", columns="class", values="lbs_ai", aggfunc="sum").fillna(0.0)
+    pivot = summary.pivot_table(index="year", columns="class", values=value_col, aggfunc="sum").fillna(0.0)
     pivot = pivot.sort_index()
 
     # Order classes for consistent stacking; biggest at bottom
@@ -331,23 +403,24 @@ def make_chart(summary: pd.DataFrame, out_path: Path) -> None:
 
     fig, axes = plt.subplots(2, 1, figsize=(11, 9), sharex=True)
 
-    # Panel 1: absolute lbs
+    # Panel 1: absolute values
     ax = axes[0]
-    ax.stackplot(pivot.index, pivot.T.values / 1e6, labels=pivot.columns, alpha=0.85)
-    ax.axvline(2018.5, color="black", linestyle="--", linewidth=1, alpha=0.6)
-    ax.text(2018.55, ax.get_ylim()[1] * 0.95, "2019 chlorpyrifos phase-out",
+    ax.stackplot(pivot.index, pivot.T.values * scale, labels=pivot.columns, alpha=0.85)
+    ax.axvline(vline_x, color="black", linestyle="--", linewidth=1, alpha=0.6)
+    ax.text(vline_x + 0.05, ax.get_ylim()[1] * 0.95, vline_label,
             fontsize=9, va="top", ha="left", alpha=0.7)
-    ax.set_ylabel("Million lbs AI applied")
-    ax.set_title("California agricultural insecticide use by chemical class")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
     ax.legend(loc="upper right", fontsize=8, ncol=2)
     ax.grid(True, alpha=0.3)
 
-    # Panel 2: proportional
-    prop = pivot.div(pivot.sum(axis=1), axis=0) * 100
+    # Panel 2: proportional composition
+    row_totals = pivot.sum(axis=1)
+    prop = pivot.div(row_totals, axis=0).fillna(0.0) * 100
     ax = axes[1]
     ax.stackplot(prop.index, prop.T.values, labels=prop.columns, alpha=0.85)
-    ax.axvline(2018.5, color="black", linestyle="--", linewidth=1, alpha=0.6)
-    ax.set_ylabel("% of total tracked insecticide lbs")
+    ax.axvline(vline_x, color="black", linestyle="--", linewidth=1, alpha=0.6)
+    ax.set_ylabel(f"% of total {ylabel.split()[0].lower()}")
     ax.set_xlabel("Year")
     ax.set_title("Compositional shift")
     ax.set_ylim(0, 100)
@@ -355,6 +428,7 @@ def make_chart(summary: pd.DataFrame, out_path: Path) -> None:
 
     plt.tight_layout()
     plt.savefig(out_path, dpi=150)
+    plt.close(fig)
     print(f"  chart -> {out_path}")
 
 
@@ -382,7 +456,6 @@ def main() -> int:
         return 1
 
     # Step 2: resolve chemical classes from the most recent year's lookup
-    # (chemical.txt is largely stable but use the latest available)
     print("\nStep 2: resolve chemical classes")
     latest_year = max(zip_paths.keys())
     chem_lookup = load_chemical_lookup(zip_paths[latest_year])
@@ -401,6 +474,22 @@ def main() -> int:
     ])
     mapping_df.to_csv(OUTPUT_DIR / "chemical_lookup.csv", index=False)
     print(f"  mapping -> {OUTPUT_DIR / 'chemical_lookup.csv'}")
+
+    # Step 2b: load toxicity constants and build chem_code → value maps
+    print("\nStep 2b: load toxicity reference values")
+    avian_by_name, aquatic_by_name = _load_toxicity_csv()
+    code_to_avian: dict[int, float] = {}
+    code_to_aquatic: dict[int, float] = {}
+    for _, row in chem_lookup.iterrows():
+        if pd.isna(row["chem_code"]) or pd.isna(row["chemname"]):
+            continue
+        c = int(row["chem_code"])
+        nm = str(row["chemname"])
+        if nm in avian_by_name:
+            code_to_avian[c] = avian_by_name[nm]
+        if nm in aquatic_by_name:
+            code_to_aquatic[c] = aquatic_by_name[nm]
+    print(f"  toxicity matched: {len(code_to_avian)} avian, {len(code_to_aquatic)} aquatic chem_codes")
 
     # Step 3: build ag site filter if requested
     ag_site_codes: set[int] | None = None
@@ -421,29 +510,69 @@ def main() -> int:
     yearly: list[pd.DataFrame] = []
     for year, zp in sorted(zip_paths.items()):
         print(f"  [{year}] aggregating ...")
-        df = aggregate_year(zp, year, code_to_class, ag_site_codes)
+        df = aggregate_year(zp, year, code_to_class, ag_site_codes, code_to_avian, code_to_aquatic)
         if not df.empty:
             yearly.append(df)
             total_lbs = df["lbs_ai"].sum()
-            print(f"    total lbs AI (tracked classes): {total_lbs:,.0f}")
+            total_tox_aq = df["tox_units_aquatic"].sum()
+            print(f"    lbs AI (tracked classes): {total_lbs:,.0f}  |  aquatic tox units: {total_tox_aq:.4f}")
 
     if not yearly:
         print("No data aggregated; aborting.")
         return 1
 
     summary = pd.concat(yearly, ignore_index=True)
-    summary_path = OUTPUT_DIR / "pur_yearly_by_class.csv"
-    summary.to_csv(summary_path, index=False)
-    print(f"\n  summary -> {summary_path}")
 
-    # Step 5: chart
-    print("\nStep 5: chart")
-    make_chart(summary, OUTPUT_DIR / "pur_substitution_chart.png")
+    # Step 5: save per-metric CSVs
+    print("\nStep 5: save CSVs")
+    outputs = [
+        ("lbs_ai",            "pur_yearly_lbs_by_class.csv"),
+        ("acres_treated",     "pur_yearly_acres_by_class.csv"),
+        ("tox_units_avian",   "pur_yearly_tox_avian_by_class.csv"),
+        ("tox_units_aquatic", "pur_yearly_tox_aquatic_by_class.csv"),
+    ]
+    for col, fname in outputs:
+        out = summary[["year", "class", col, "n_records"]].copy()
+        out.to_csv(OUTPUT_DIR / fname, index=False)
+        print(f"  -> {OUTPUT_DIR / fname}")
 
-    # Step 6: tabular preview
+    # Step 6: charts
+    print("\nStep 6: charts")
+    make_chart(
+        summary, "lbs_ai",
+        ylabel="Million lbs AI applied",
+        title="California agricultural insecticide use by chemical class",
+        out_path=OUTPUT_DIR / "pur_chart_lbs.png",
+        scale=1e-6,
+    )
+    make_chart(
+        summary, "acres_treated",
+        ylabel="Million acres treated",
+        title="California agricultural insecticide treated area by chemical class",
+        out_path=OUTPUT_DIR / "pur_chart_acres.png",
+        scale=1e-6,
+    )
+    make_chart(
+        summary, "tox_units_avian",
+        ylabel="Avian toxicity units (lbs / LD50 mg kg⁻¹)",
+        title="California agricultural insecticide avian toxicity load by class",
+        out_path=OUTPUT_DIR / "pur_chart_toxicity_avian.png",
+    )
+    make_chart(
+        summary, "tox_units_aquatic",
+        ylabel="Aquatic toxicity units (lbs / LC50 µg L⁻¹)",
+        title="California agricultural insecticide aquatic toxicity load by class",
+        out_path=OUTPUT_DIR / "pur_chart_toxicity_aquatic.png",
+    )
+
+    # Step 7: tabular preview
     print("\nFinal pivot (lbs AI applied):")
     pivot = summary.pivot_table(index="year", columns="class", values="lbs_ai", aggfunc="sum").fillna(0.0)
     print(pivot.round(0).to_string())
+
+    print("\nFinal pivot (aquatic toxicity units):")
+    pivot_tox = summary.pivot_table(index="year", columns="class", values="tox_units_aquatic", aggfunc="sum").fillna(0.0)
+    print(pivot_tox.round(4).to_string())
 
     return 0
 
