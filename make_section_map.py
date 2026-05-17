@@ -280,10 +280,12 @@ map.addControl(new maplibregl.ScaleControl({{ unit: 'imperial' }}), 'bottom-righ
 
 map.on('load', () => {{
 
-  // PLSS sections (geometry embedded; feature IDs = section_key strings)
+  // PLSS sections — promoteId tells MapLibre to use the 'sk' property
+  // as each feature's ID for setFeatureState (required for string IDs)
   map.addSource('sections', {{
     type: 'geojson',
     data: SECTIONS,
+    promoteId: 'sk',
   }});
 
   // Fill: color by feature-state.lbs (step scale, log-approximate)
