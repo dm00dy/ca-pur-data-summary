@@ -6,6 +6,11 @@ Produces a self-contained HTML file using MapLibre GL JS.
 Basemap tiles load from OpenFreeMap (free, no API key, needs internet);
 all pesticide data is embedded so the sections render even offline.
 
+Three metric views:
+  - Lbs AI applied        (raw application pounds)
+  - Aquatic tox units     (lbs / Daphnia LC50 μg/L — proxy for prey-base disruption)
+  - Avian tox units       (lbs / avian oral LD50 mg/kg — proxy for direct mortality risk)
+
 Usage:
     source .venv/bin/activate
     python make_section_map.py
@@ -24,11 +29,11 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 
-OUTPUT_DIR      = Path("./pur_analysis")
+OUTPUT_DIR       = Path("./pur_analysis")
 SECTIONS_PARQUET = Path("./spatial/outputs/pur_sections.parquet")
-PLSS_GPKG       = Path("./spatial/data/plss_ca.gpkg")
-BBS_CSV         = Path("./spatial/outputs/bbs_locations.csv")
-MAP_OUTPUT      = OUTPUT_DIR / "section_map.html"
+PLSS_GPKG        = Path("./spatial/data/plss_ca.gpkg")
+BBS_CSV          = Path("./spatial/outputs/bbs_locations.csv")
+MAP_OUTPUT       = OUTPUT_DIR / "section_map.html"
 
 COUNTY_NAMES: dict[str, str] = {
     "01": "Alameda",       "02": "Alpine",        "03": "Amador",
@@ -58,43 +63,65 @@ COUNTY_NAMES: dict[str, str] = {
 # DATA PREPARATION
 # ---------------------------------------------------------------------------
 
-def build_lookup(parquet_path: Path) -> tuple[dict, dict, set, list, list]:
-    """Aggregate PUR records → section × year × class lookup for JavaScript."""
+def build_lookup(parquet_path: Path) -> tuple[dict, dict, dict, dict, set, list, list]:
+    """Aggregate PUR records → three section × year × class lookup dicts."""
     print("Loading PUR section data ...")
     df = pd.read_parquet(
         parquet_path,
-        columns=["section_key", "year", "chem_class", "lbs_ai", "county_cd"],
+        columns=["section_key", "year", "chem_class", "lbs_ai", "county_cd",
+                 "avian_ld50", "aquatic_lc50"],
     )
     print(f"  {len(df):,} application records")
 
-    # section → county: most frequent county_cd per section
     sec_county = (
         df.groupby("section_key")["county_cd"]
         .agg(lambda x: x.mode().iloc[0])
         .to_dict()
     )
 
+    # Tox units per record (NaN where no LD50/LC50; groupby sum skips NaN)
+    df["tox_aquatic"] = df["lbs_ai"] / df["aquatic_lc50"]
+    df["tox_avian"]   = df["lbs_ai"] / df["avian_ld50"]
+
     agg = (
-        df.groupby(["section_key", "year", "chem_class"])["lbs_ai"]
-        .sum()
+        df.groupby(["section_key", "year", "chem_class"])
+        .agg(
+            lbs_ai=("lbs_ai",      "sum"),
+            tox_aquatic=("tox_aquatic", "sum"),
+            tox_avian=("tox_avian",   "sum"),
+        )
         .reset_index()
     )
-    agg["lbs_ai"] = agg["lbs_ai"].round(2)
+    agg["lbs_ai"]      = agg["lbs_ai"].round(2)
+    agg["tox_aquatic"] = agg["tox_aquatic"].round(4)
+    agg["tox_avian"]   = agg["tox_avian"].round(4)
+
     print(f"  {len(agg):,} section × year × class rows")
     print(f"  {agg['section_key'].nunique():,} unique sections with data")
+    for col in ["lbs_ai", "tox_aquatic", "tox_avian"]:
+        v = agg[col][agg[col] > 0]
+        print(f"  {col}: p50={v.quantile(0.50):.3g}  p90={v.quantile(0.90):.3g}  "
+              f"p99={v.quantile(0.99):.3g}  max={v.max():.3g}")
 
-    # {year_str: {class: {section_key: lbs}}}
-    lookup: dict = {}
-    for year, yr_grp in agg.groupby("year"):
-        lookup[str(year)] = {
-            cls: grp.set_index("section_key")["lbs_ai"].to_dict()
-            for cls, grp in yr_grp.groupby("chem_class")
-        }
+    def make_lookup(value_col: str) -> dict:
+        sub = agg[agg[value_col] > 0]
+        lookup: dict = {}
+        for year, yr_grp in sub.groupby("year"):
+            lookup[str(year)] = {
+                cls: grp.set_index("section_key")[value_col].to_dict()
+                for cls, grp in yr_grp.groupby("chem_class")
+            }
+        return lookup
+
+    lookup_lbs     = make_lookup("lbs_ai")
+    lookup_aquatic = make_lookup("tox_aquatic")
+    lookup_avian   = make_lookup("tox_avian")
 
     active  = set(agg["section_key"].unique())
     classes = sorted(agg["chem_class"].unique())
     years   = sorted(agg["year"].unique())
-    return lookup, sec_county, active, classes, years
+
+    return lookup_lbs, lookup_aquatic, lookup_avian, sec_county, active, classes, years
 
 
 def build_geojson(plss_path: Path, active: set, sec_county: dict) -> dict:
@@ -115,7 +142,7 @@ def build_geojson(plss_path: Path, active: set, sec_county: dict) -> dict:
     for _, row in gdf.iterrows():
         features.append({
             "type": "Feature",
-            "id": row["section_key"],        # string ID — MapLibre setFeatureState uses this
+            "id": row["section_key"],
             "properties": {
                 "sk": row["section_key"],
                 "cn": row["county_name"],
@@ -146,15 +173,19 @@ def load_bbs() -> dict | None:
 # ---------------------------------------------------------------------------
 
 def build_html(
-    lookup: dict,
+    lookup_lbs: dict,
+    lookup_aquatic: dict,
+    lookup_avian: dict,
     geojson: dict,
     bbs: dict | None,
     classes: list,
     years: list,
 ) -> str:
-    lookup_json  = json.dumps(lookup,  separators=(",", ":"))
-    geojson_str  = json.dumps(geojson, separators=(",", ":"))
-    bbs_json     = json.dumps(bbs,     separators=(",", ":"))
+    lbs_json     = json.dumps(lookup_lbs,     separators=(",", ":"))
+    aquatic_json = json.dumps(lookup_aquatic, separators=(",", ":"))
+    avian_json   = json.dumps(lookup_avian,   separators=(",", ":"))
+    geojson_str  = json.dumps(geojson,        separators=(",", ":"))
+    bbs_json     = json.dumps(bbs,            separators=(",", ":"))
     classes_json = json.dumps(classes)
     years_json   = json.dumps([str(y) for y in years])
     n_years      = len(years) - 1
@@ -169,7 +200,8 @@ def build_html(
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          display: flex; flex-direction: column; height: 100vh; overflow: hidden; }}
 
   #header {{ background: #1a3a5c; color: white; padding: 10px 18px; flex-shrink: 0; }}
   #header h1 {{ font-size: 1rem; font-weight: 600; }}
@@ -198,12 +230,22 @@ def build_html(
   }}
   #play-btn:hover {{ background: #2a5a8c; }}
 
-  /* inline color legend */
+  #metric-btns {{
+    display: flex; border: 1.5px solid #bbb; border-radius: 4px; overflow: hidden;
+  }}
+  .metric-btn {{
+    padding: 4px 11px; border: none; border-right: 1px solid #bbb;
+    background: white; cursor: pointer; font-size: 0.78rem; color: #555;
+    transition: background 0.12s, color 0.12s;
+  }}
+  .metric-btn:last-child {{ border-right: none; }}
+  .metric-btn:hover {{ background: #f0f4f8; }}
+  .metric-btn.active {{ background: #1a3a5c; color: white; font-weight: 600; }}
+
   #legend {{ display: flex; align-items: center; gap: 5px; }}
-  .leg-bar {{
-    height: 14px; width: 100px;
-    background: linear-gradient(to right, #ffffcc, #fed976, #fd8d3c, #e31a1c, #800026);
-    border-radius: 2px; border: 1px solid #ccc;
+  #leg-bar {{
+    height: 14px; width: 110px; border-radius: 2px; border: 1px solid #ccc;
+    transition: background 0.25s;
   }}
   .leg-lo, .leg-hi {{ font-size: 0.7rem; color: #555; }}
 
@@ -211,17 +253,17 @@ def build_html(
 
   .maplibregl-popup-content {{
     font-family: -apple-system, sans-serif; font-size: 0.8rem;
-    padding: 9px 13px; line-height: 1.5; min-width: 160px;
+    padding: 9px 13px; line-height: 1.5; min-width: 175px;
   }}
   .maplibregl-popup-content b {{ font-size: 0.85rem; display: block; margin-bottom: 2px; }}
-  .lbs-val {{ font-size: 1rem; font-weight: 700; color: #c0392b; }}
+  .metric-val {{ font-size: 1rem; font-weight: 700; color: #c0392b; }}
 </style>
 </head>
 <body>
 
 <div id="header">
   <h1>California Agricultural Insecticide Use — PLSS Section Level (~1 mi²), 2015–2023</h1>
-  <p>CDPR Pesticide Use Reports · select chemical class and year · hover sections for lbs applied · blue dots = BBS monitoring routes</p>
+  <p>CDPR Pesticide Use Reports · select class, year, and metric · hover sections for values · blue dots = BBS monitoring routes</p>
 </div>
 
 <div id="controls">
@@ -235,16 +277,25 @@ def build_html(
     <div class="year-row">
       <input type="range" id="year-slider" min="0" max="{n_years}" value="0" step="1">
       <span id="year-display">2015</span>
-      <button id="play-btn">▶  Play</button>
+      <button id="play-btn">&#9654;&#160;&#160;Play</button>
     </div>
   </div>
 
   <div class="ctrl-group">
-    <span class="ctrl-label">Lbs AI applied / section</span>
+    <span class="ctrl-label">Metric</span>
+    <div id="metric-btns">
+      <button class="metric-btn active" data-metric="lbs">Lbs AI</button>
+      <button class="metric-btn" data-metric="aquatic">Aquatic Tox</button>
+      <button class="metric-btn" data-metric="avian">Avian Tox</button>
+    </div>
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label" id="leg-label">Lbs AI applied / section</span>
     <div id="legend">
-      <span class="leg-lo">&lt; 1</span>
-      <div class="leg-bar"></div>
-      <span class="leg-hi">&gt; 5,000</span>
+      <span class="leg-lo" id="leg-lo">&lt;1 lb</span>
+      <div id="leg-bar" style="background:linear-gradient(to right,#ffffcc,#fed976,#fd8d3c,#e31a1c,#800026)"></div>
+      <span class="leg-hi" id="leg-hi">&gt;5,000 lbs</span>
     </div>
   </div>
 </div>
@@ -253,17 +304,50 @@ def build_html(
 
 <script>
 // ── Embedded data (generated by make_section_map.py) ─────────────────────────
-const LOOKUP   = {lookup_json};
+const LOOKUP_LBS     = {lbs_json};
+const LOOKUP_AQUATIC = {aquatic_json};
+const LOOKUP_AVIAN   = {avian_json};
 const SECTIONS = {geojson_str};
 const BBS      = {bbs_json};
 const CLASSES  = {classes_json};
 const YEARS    = {years_json};
 
-const ACTIVE = new Set(SECTIONS.features.map(f => f.id));
+// ── Metric configuration ──────────────────────────────────────────────────────
+// steps: flat array of [threshold, color, threshold, color, ...] for MapLibre step expr
+// Thresholds tuned to the actual data distribution (p50/p90/p99 checked at build time)
+const METRIC_CONFIG = {{
+  lbs: {{
+    lookup:   LOOKUP_LBS,
+    label:    'Lbs AI applied / section',
+    fmt:      v => v.toLocaleString('en-US', {{maximumFractionDigits:1}}) + ' lbs AI',
+    steps:    [1,'#ffffcc', 10,'#fed976', 100,'#fd8d3c', 1000,'#e31a1c', 5000,'#800026'],
+    gradient: 'linear-gradient(to right,#ffffcc,#fed976,#fd8d3c,#e31a1c,#800026)',
+    legLo: '<1 lb', legHi: '>5,000 lbs',
+  }},
+  aquatic: {{
+    lookup:   LOOKUP_AQUATIC,
+    // Units: lbs_ai / Daphnia LC50 (μg/L) — higher = more hazard to aquatic invertebrates
+    label:    'Aquatic tox units (lbs ÷ Daphnia LC50)',
+    fmt:      v => v.toFixed(3) + ' tox units',
+    steps:    [0.001,'#c6dbef', 0.1,'#6baed6', 10,'#2171b5', 1000,'#084594', 10000,'#08306b'],
+    gradient: 'linear-gradient(to right,#c6dbef,#6baed6,#2171b5,#084594,#08306b)',
+    legLo: '<0.001', legHi: '>10,000',
+  }},
+  avian: {{
+    lookup:   LOOKUP_AVIAN,
+    // Units: lbs_ai / avian oral LD50 (mg/kg) — higher = more direct mortality hazard to birds
+    label:    'Avian tox units (lbs ÷ oral LD50)',
+    fmt:      v => v.toFixed(4) + ' tox units',
+    steps:    [0.001,'#fcc5c0', 0.01,'#f768a1', 1,'#c51b8a', 10,'#7a0177', 100,'#49006a'],
+    gradient: 'linear-gradient(to right,#fcc5c0,#f768a1,#c51b8a,#7a0177,#49006a)',
+    legLo: '<0.001', legHi: '>100',
+  }},
+}};
 
 // ── State ────────────────────────────────────────────────────────────────────
 let currentClass   = CLASSES[0];
 let currentYearIdx = 0;
+let currentMetric  = 'lbs';
 let playTimer      = null;
 
 // ── Map ───────────────────────────────────────────────────────────────────────
@@ -278,42 +362,34 @@ const map = new maplibregl.Map({{
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.addControl(new maplibregl.ScaleControl({{ unit: 'imperial' }}), 'bottom-right');
 
+function makeColorExpr(steps) {{
+  return ['step', ['coalesce', ['feature-state', 'lbs'], 0],
+    'rgba(0,0,0,0)', ...steps];
+}}
+
 map.on('load', () => {{
 
-  // PLSS sections — promoteId tells MapLibre to use the 'sk' property
-  // as each feature's ID for setFeatureState (required for string IDs)
+  // promoteId required for setFeatureState with string feature IDs
   map.addSource('sections', {{
     type: 'geojson',
     data: SECTIONS,
     promoteId: 'sk',
   }});
 
-  // Fill: color by feature-state.lbs (step scale, log-approximate)
   map.addLayer({{
     id: 'sections-fill',
     type: 'fill',
     source: 'sections',
     paint: {{
-      'fill-color': [
-        'step',
-        ['coalesce', ['feature-state', 'lbs'], 0],
-        'rgba(0,0,0,0)',    //    0       → transparent
-        0.01, '#ffffcc',    //   <1 lbs   → pale yellow
-        10,   '#fed976',    //  <10 lbs
-        100,  '#fd8d3c',    // <100 lbs
-        1000, '#e31a1c',    // <1 k lbs
-        5000, '#800026',    // ≥5 k lbs  → dark red
-      ],
+      'fill-color': makeColorExpr(METRIC_CONFIG.lbs.steps),
       'fill-opacity': [
         'case',
         ['>', ['coalesce', ['feature-state', 'lbs'], 0], 0],
-        0.82,
-        0,
+        0.82, 0,
       ],
     }},
   }});
 
-  // Outline: thin at state zoom, slightly heavier when zoomed in
   map.addLayer({{
     id: 'sections-line',
     type: 'line',
@@ -325,7 +401,6 @@ map.on('load', () => {{
     }},
   }});
 
-  // BBS monitoring routes (static — not filtered by year/class)
   if (BBS) {{
     map.addSource('bbs', {{
       type: 'geojson',
@@ -352,36 +427,50 @@ map.on('load', () => {{
     }});
   }}
 
-  // Load initial data
   updateSections();
   setupHover();
 }});
 
-// ── Data update (fast: removeFeatureState clears all at once) ─────────────────
+// ── Data update ───────────────────────────────────────────────────────────────
 function updateSections() {{
   if (!map.getSource('sections')) return;
   map.removeFeatureState({{ source: 'sections' }});
-  const classData = LOOKUP[YEARS[currentYearIdx]]?.[currentClass] ?? {{}};
-  for (const [sk, lbs] of Object.entries(classData)) {{
-    map.setFeatureState({{ source: 'sections', id: sk }}, {{ lbs }});
+  const classData = METRIC_CONFIG[currentMetric].lookup[YEARS[currentYearIdx]]?.[currentClass] ?? {{}};
+  for (const [sk, val] of Object.entries(classData)) {{
+    map.setFeatureState({{ source: 'sections', id: sk }}, {{ lbs: val }});
   }}
+}}
+
+// ── Metric switch ─────────────────────────────────────────────────────────────
+function updateMetric(metric) {{
+  currentMetric = metric;
+  const cfg = METRIC_CONFIG[metric];
+  map.setPaintProperty('sections-fill', 'fill-color', makeColorExpr(cfg.steps));
+  document.getElementById('leg-bar').style.background    = cfg.gradient;
+  document.getElementById('leg-lo').textContent          = cfg.legLo;
+  document.getElementById('leg-hi').textContent          = cfg.legHi;
+  document.getElementById('leg-label').textContent       = cfg.label;
+  document.querySelectorAll('.metric-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.metric === metric));
+  updateSections();
 }}
 
 // ── Hover tooltips ────────────────────────────────────────────────────────────
 function setupHover() {{
-  const popup    = new maplibregl.Popup({{ closeButton: false, closeOnClick: false, maxWidth: '240px' }});
+  const popup    = new maplibregl.Popup({{ closeButton: false, closeOnClick: false, maxWidth: '260px' }});
   const bbsPopup = new maplibregl.Popup({{ closeButton: false, closeOnClick: false }});
 
   map.on('mousemove', 'sections-fill', (e) => {{
     map.getCanvas().style.cursor = 'crosshair';
     const p   = e.features[0].properties;
     const sk  = p.sk;
-    const lbs = LOOKUP[YEARS[currentYearIdx]]?.[currentClass]?.[sk] ?? 0;
+    const cfg = METRIC_CONFIG[currentMetric];
+    const val = cfg.lookup[YEARS[currentYearIdx]]?.[currentClass]?.[sk] ?? 0;
     popup.setLngLat(e.lngLat).setHTML(
       `<b>${{p.cn}} County</b>`+
       `<div style="color:#555;font-size:0.75rem;margin-bottom:4px">Section ${{sk}}</div>`+
       `${{currentClass}}<br>`+
-      `<span class="lbs-val">${{lbs.toLocaleString('en-US', {{maximumFractionDigits:1}})}}</span> lbs AI applied<br>`+
+      `<span class="metric-val">${{cfg.fmt(val)}}</span><br>`+
       `<span style="color:#888">Year: ${{YEARS[currentYearIdx]}}</span>`
     ).addTo(map);
   }});
@@ -406,16 +495,12 @@ function setupHover() {{
 // ── Controls ──────────────────────────────────────────────────────────────────
 const sel = document.getElementById('class-select');
 CLASSES.forEach(c => {{
-  const opt    = document.createElement('option');
-  opt.value    = c;
+  const opt = document.createElement('option');
+  opt.value = c;
   opt.textContent = c;
   sel.appendChild(opt);
 }});
-
-sel.addEventListener('change', () => {{
-  currentClass = sel.value;
-  updateSections();
-}});
+sel.addEventListener('change', () => {{ currentClass = sel.value; updateSections(); }});
 
 document.getElementById('year-slider').addEventListener('input', (e) => {{
   currentYearIdx = parseInt(e.target.value);
@@ -426,21 +511,25 @@ document.getElementById('year-slider').addEventListener('input', (e) => {{
 document.getElementById('play-btn').addEventListener('click', () => {{
   if (playTimer) {{
     clearInterval(playTimer); playTimer = null;
-    document.getElementById('play-btn').textContent = '▶  Play';
+    document.getElementById('play-btn').innerHTML = '&#9654;&#160;&#160;Play';
   }} else {{
-    document.getElementById('play-btn').textContent = '⏸  Pause';
+    document.getElementById('play-btn').innerHTML = '&#9646;&#9646;&#160;Pause';
     playTimer = setInterval(() => {{
       if (currentYearIdx >= YEARS.length - 1) {{
         clearInterval(playTimer); playTimer = null;
-        document.getElementById('play-btn').textContent = '▶  Play';
+        document.getElementById('play-btn').innerHTML = '&#9654;&#160;&#160;Play';
         return;
       }}
       currentYearIdx++;
-      document.getElementById('year-slider').value       = currentYearIdx;
+      document.getElementById('year-slider').value        = currentYearIdx;
       document.getElementById('year-display').textContent = YEARS[currentYearIdx];
       updateSections();
     }}, 900);
   }}
+}});
+
+document.querySelectorAll('.metric-btn').forEach(btn => {{
+  btn.addEventListener('click', () => updateMetric(btn.dataset.metric));
 }});
 </script>
 </body>
@@ -454,14 +543,14 @@ document.getElementById('play-btn').addEventListener('click', () => {{
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    lookup, sec_county, active, classes, years = build_lookup(SECTIONS_PARQUET)
+    lookup_lbs, lookup_aquatic, lookup_avian, sec_county, active, classes, years = build_lookup(SECTIONS_PARQUET)
     geojson = build_geojson(PLSS_GPKG, active, sec_county)
-    bbs     = load_bbs()
+    bbs = load_bbs()
     if bbs:
         print(f"BBS routes:  {len(bbs['lat'])} points")
 
     print("Building HTML ...")
-    html = build_html(lookup, geojson, bbs, classes, years)
+    html = build_html(lookup_lbs, lookup_aquatic, lookup_avian, geojson, bbs, classes, years)
 
     MAP_OUTPUT.write_text(html, encoding="utf-8")
     size_mb = MAP_OUTPUT.stat().st_size / 1e6
