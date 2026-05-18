@@ -4,6 +4,14 @@ A Python script for downloading and aggregating California Department of Pestici
 
 This tool was built to support a grant proposal investigating wildlife response to California's recent reductions in agricultural insecticide use, but it's general enough to be useful for anyone working with PUR data who wants annual statewide aggregations by chemical class.
 
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| [SECTION_MAP.md](SECTION_MAP.md) | End-to-end pipeline for the interactive section-level map — data dependencies, build steps, MapLibre architecture, known limitations, and extension points |
+| [toxicity_lookup_procedure.md](toxicity_lookup_procedure.md) | Step-by-step procedure for sourcing avian and aquatic toxicity values from PPDB, ECOTOX, and other databases; reviewer verification checklist |
+| [references.md](references.md) | Full citations for all toxicity databases and supporting literature used in this analysis |
+
 ## What it does
 
 Given a range of years, the script:
