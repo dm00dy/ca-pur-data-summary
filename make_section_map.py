@@ -36,7 +36,13 @@ import pandas as pd
 
 OUTPUT_DIR       = Path("./pur_analysis")
 SECTIONS_PARQUET = Path("./spatial/outputs/pur_sections.parquet")
-PLSS_GPKG        = Path("./spatial/data/plss_ca.gpkg")
+# plss_ca_augmented.gpkg adds ~3,306 synthetic sections subdivided from BLM
+# township polygons to cover Mexican land grant (rancho) areas where PLSS
+# was never surveyed on the ground. See synthesize_plss.py. Falls back to
+# the standard BLM-only file if the augmented one isn't present.
+_PLSS_AUGMENTED = Path("./spatial/data/plss_ca_augmented.gpkg")
+_PLSS_STANDARD  = Path("./spatial/data/plss_ca.gpkg")
+PLSS_GPKG = _PLSS_AUGMENTED if _PLSS_AUGMENTED.exists() else _PLSS_STANDARD
 BBS_CSV          = Path("./spatial/outputs/bbs_locations.csv")
 MAP_OUTPUT       = OUTPUT_DIR / "section_map.html"
 

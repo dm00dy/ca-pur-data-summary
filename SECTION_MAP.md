@@ -45,7 +45,8 @@ dependencies beyond what the rest of the project already uses.
 | File | Contents | Size |
 |------|----------|------|
 | `spatial/outputs/pur_sections.parquet` | 5.07M PUR application records geocoded to PLSS sections, 2015–2023 | 92 MB |
-| `spatial/data/plss_ca.gpkg` | 131,579 California PLSS section polygons with geometry | 58 MB |
+| `spatial/data/plss_ca_augmented.gpkg` | 134,885 California PLSS section polygons — 131,579 BLM CADNSDI + 3,306 synthetic sections subdivided from township polygons to cover Mexican land grant (rancho) areas. See `synthesize_plss.py` for derivation. | 61 MB |
+| `spatial/data/plss_ca.gpkg` | Original 131,579 BLM-only sections (fallback if augmented file is absent) | 58 MB |
 | `spatial/outputs/bbs_locations.csv` | 44 BBS monitoring route centroids (lat/lon, route name) | <1 MB |
 
 The parquet columns used by this script:
@@ -117,10 +118,11 @@ Also returns the raw `agg` DataFrame, which is passed to the BBS step.
 
 ### Step 2 — `build_geojson()`: load section polygons
 
-Reads `plss_ca.gpkg`, filters to the ~21,226 sections present in the PUR
-data (~17,657 have matching PLSS geometry after join), and reprojects to
-WGS84 (EPSG:4326) for the web map. Annotates each feature with `county_name`
-decoded from the CDPR county code.
+Reads `plss_ca_augmented.gpkg` (falls back to `plss_ca.gpkg`), filters to
+the ~21,226 sections present in the PUR data (~20,963 have matching geometry
+after join, of which ~3,306 are synthetic rancho sections), and reprojects
+to WGS84 (EPSG:4326) for the web map. Annotates each feature with
+`county_name` decoded from the CDPR county code.
 
 GeoJSON features use the `section_key` as the feature `id` (required for
 MapLibre's `feature-state` mechanism).
@@ -244,10 +246,24 @@ Sections with value 0 (no use that year/class) are fully transparent.
 
 ## Known limitations
 
-- **~3,500 unmatched sections**: 21,226 sections have PUR records but only
-  17,657 have matching PLSS polygon geometry. The remainder have COMTRS
-  codes that don't appear in the PLSS GeoPackage, likely due to reporting
-  errors in the PUR data.
+- **~263 unmatched sections (1.2% of total lbs)**: 21,226 sections have
+  PUR records; 20,963 are matched after PLSS augmentation. The remaining
+  263 fall in townships not present in BLM Layer 1 at all, or produce
+  empty geometry after clipping (sections that land entirely outside
+  irregular township polygons — e.g., coastal cutoffs). These are dropped
+  from the map.
+
+- **~3,306 sections use synthetic polygons (~20% of total lbs)**: Mexican
+  land grant (rancho) areas were never surveyed under PLSS, so BLM has no
+  section polygons for them. CDPR's PUR uses synthetic section keys based
+  on a virtual 6×6 grid laid over each township. `synthesize_plss.py`
+  replicates that virtual grid by subdividing BLM township polygons into
+  36 equal cells with standard PLSS numbering (NE corner = section 1,
+  boustrophedon down to SE corner = section 36), clipped to the township
+  boundary. The boundaries are approximate — fine for visualization but
+  not for precise sub-section spatial analysis. Synthetic vs surveyed
+  sections are distinguishable via the `source` column ('synthetic' vs
+  'blm') in `plss_ca_augmented.gpkg`.
 
 - **BBS centroid buffer vs. route line**: See Step 3 caveat above. Using
   actual BBS route line geometry would require the USGS BBS route shapefile
@@ -292,6 +308,11 @@ embedding, or serve the GeoJSON as a separate file and load it via URL.
 Switching to vector tiles (MBTiles) would handle larger datasets but
 requires a tile server.
 
+**Refresh the augmented PLSS file**: Run `python synthesize_plss.py` to
+re-download BLM township polygons and regenerate `plss_ca_augmented.gpkg`.
+This takes ~30s (downloads only townships, not all 142K sections). The
+original `plss_ca.gpkg` is never modified.
+
 ---
 
 ## File inventory
@@ -299,7 +320,10 @@ requires a tile server.
 | File | Role |
 |------|------|
 | `make_section_map.py` | Build script — run this to regenerate the map |
+| `synthesize_plss.py` | One-time setup — builds the augmented PLSS file with synthetic rancho sections |
+| `refresh_plss.py` | Optional — fresh BLM Layer 2 download with coverage comparison (diagnostic) |
 | `pur_analysis/section_map.html` | Generated output — open in any browser |
+| `spatial/data/plss_ca_augmented.gpkg` | Augmented PLSS (BLM + synthetic), used by `make_section_map.py` |
 | `spatial/outputs/pur_sections.parquet` | Primary data source (read-only) |
 | `spatial/data/plss_ca.gpkg` | Section geometries (read-only) |
 | `spatial/outputs/bbs_locations.csv` | BBS route centroids (read-only) |
