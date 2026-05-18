@@ -44,6 +44,7 @@ _PLSS_AUGMENTED = Path("./spatial/data/plss_ca_augmented.gpkg")
 _PLSS_STANDARD  = Path("./spatial/data/plss_ca.gpkg")
 PLSS_GPKG = _PLSS_AUGMENTED if _PLSS_AUGMENTED.exists() else _PLSS_STANDARD
 BBS_CSV          = Path("./spatial/outputs/bbs_locations.csv")
+PROTECTED_LANDS  = Path("./spatial/data/protected_lands_ca.gpkg")
 MAP_OUTPUT       = OUTPUT_DIR / "section_map.html"
 
 COUNTY_NAMES: dict[str, str] = {
@@ -270,6 +271,47 @@ def build_bbs_lookup(bbs_csv: Path, plss_path: Path, agg: pd.DataFrame) -> tuple
             route_meta)
 
 
+def build_protected_lands_geojson(path: Path) -> dict | None:
+    """Load CA protected lands (federal NWRs + state CDFW lands) → GeoJSON.
+
+    Simplifies geometries to ~50m tolerance to keep embedded size manageable
+    without visibly degrading boundaries at typical zoom levels.
+    """
+    if not path.exists():
+        print("Protected lands gpkg not found — skipping context layer")
+        return None
+    print("Loading protected lands (NWRs + CDFW state lands) ...")
+    gdf = gpd.read_file(path)
+    print(f"  {len(gdf)} units: "
+          f"{(gdf['agency']=='USFWS').sum()} federal, "
+          f"{(gdf['agency']=='CDFW').sum()} state")
+
+    # Simplify in metric CRS (~50m tolerance), then reproject to WGS84
+    gdf = gdf.to_crs("EPSG:3310")
+    gdf["geometry"] = gdf.geometry.simplify(50, preserve_topology=True)
+    gdf = gdf.to_crs("EPSG:4326")
+    gdf = gdf[~gdf.geometry.is_empty]
+
+    features = []
+    for _, row in gdf.iterrows():
+        # Strip federal SHOUTY-CASE to title-case for display consistency
+        name = row["name"]
+        if row["agency"] == "USFWS" and name.isupper():
+            name = name.title()
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "name": name,
+                "type": row["type"],
+                "agency": row["agency"],
+            },
+            "geometry": row["geometry"].__geo_interface__,
+        })
+    geojson = {"type": "FeatureCollection", "features": features}
+    print(f"  GeoJSON: {len(features)} features after simplification")
+    return geojson
+
+
 # ---------------------------------------------------------------------------
 # HTML GENERATION
 # ---------------------------------------------------------------------------
@@ -288,6 +330,7 @@ def build_html(
     bbs_routes: list,
     classes: list,
     years: list,
+    protected_lands: dict | None = None,
 ) -> str:
     lbs_json     = json.dumps(lookup_lbs,     separators=(",", ":"))
     aquatic_json = json.dumps(lookup_aquatic, separators=(",", ":"))
@@ -298,6 +341,10 @@ def build_html(
     bbs_aquatic_json = json.dumps(bbs_lookup_aquatic or {}, separators=(",", ":"))
     bbs_avian_json   = json.dumps(bbs_lookup_avian   or {}, separators=(",", ":"))
     bbs_routes_json  = json.dumps(bbs_routes,              separators=(",", ":"))
+
+    protected_json   = json.dumps(protected_lands or {"type":"FeatureCollection","features":[]},
+                                  separators=(",", ":"))
+    has_protected    = "true" if protected_lands else "false"
 
     classes_json = json.dumps(classes)
     years_json   = json.dumps([str(y) for y in years])
@@ -363,6 +410,18 @@ def build_html(
   }}
   .leg-lo, .leg-hi {{ font-size: 0.7rem; color: #555; }}
 
+  .overlay-toggle {{
+    display: flex; align-items: center; gap: 9px;
+    font-size: 0.75rem; cursor: pointer; user-select: none;
+  }}
+  .overlay-toggle input {{ cursor: pointer; }}
+  .swatch {{
+    display: inline-block; width: 11px; height: 11px; margin-right: 4px;
+    vertical-align: -1px; border: 1px solid #555;
+  }}
+  .swatch-usfws {{ background: rgba(46,139,87,0.35); border-color: #2e8b57; }}
+  .swatch-cdfw  {{ background: rgba(30,144,255,0.30); border-color: #1e90ff; }}
+
   #map {{ flex: 1; min-height: 0; }}
 
   .maplibregl-popup-content {{
@@ -412,6 +471,15 @@ def build_html(
       <span class="leg-hi" id="leg-hi">&gt;5,000 lbs</span>
     </div>
   </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">Overlays</span>
+    <label class="overlay-toggle">
+      <input type="checkbox" id="protected-toggle" checked>
+      <span><span class="swatch swatch-usfws"></span>NWR</span>
+      <span><span class="swatch swatch-cdfw"></span>State WA / ER</span>
+    </label>
+  </div>
 </div>
 
 <div id="map"></div>
@@ -428,6 +496,9 @@ const BBS_LOOKUP_AQUATIC = {bbs_aquatic_json};
 const BBS_LOOKUP_AVIAN   = {bbs_avian_json};
 const BBS_ROUTES         = {bbs_routes_json};
 const HAS_BBS            = {has_bbs};
+
+const PROTECTED_LANDS = {protected_json};
+const HAS_PROTECTED   = {has_protected};
 
 // sqrt-of-max values for each metric, used to scale circle radii
 const BBS_SQRT_MAX = {{
@@ -543,6 +614,40 @@ map.on('load', () => {{
       'line-opacity': 0.35,
     }},
   }});
+
+  // Protected lands context layer — federal NWRs (green) + CDFW state lands (blue)
+  if (HAS_PROTECTED && PROTECTED_LANDS.features.length > 0) {{
+    map.addSource('protected', {{ type: 'geojson', data: PROTECTED_LANDS }});
+    map.addLayer({{
+      id: 'protected-fill',
+      type: 'fill',
+      source: 'protected',
+      paint: {{
+        'fill-color': [
+          'match', ['get', 'agency'],
+          'USFWS', '#2e8b57',   // sea green
+          'CDFW',  '#1e90ff',   // dodger blue
+          '#888',
+        ],
+        'fill-opacity': 0.18,
+      }},
+    }});
+    map.addLayer({{
+      id: 'protected-line',
+      type: 'line',
+      source: 'protected',
+      paint: {{
+        'line-color': [
+          'match', ['get', 'agency'],
+          'USFWS', '#2e8b57',
+          'CDFW',  '#1e90ff',
+          '#666',
+        ],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.5, 10, 1.6],
+        'line-opacity': 0.85,
+      }},
+    }});
+  }}
 
   if (HAS_BBS && BBS_ROUTES.length > 0) {{
     map.addSource('bbs', {{
@@ -663,6 +768,19 @@ function setupHover() {{
       bbsPopup.remove();
     }});
   }}
+
+  if (HAS_PROTECTED) {{
+    const protPopup = new maplibregl.Popup({{ closeButton: false, closeOnClick: false }});
+    map.on('mousemove', 'protected-fill', (e) => {{
+      const p = e.features[0].properties;
+      const agencyLabel = p.agency === 'USFWS' ? 'USFWS' : 'CDFW';
+      protPopup.setLngLat(e.lngLat).setHTML(
+        `<b>${{p.name}}</b><br>`+
+        `<span style="color:#555;font-size:0.78rem">${{p.type}} · ${{agencyLabel}}</span>`
+      ).addTo(map);
+    }});
+    map.on('mouseleave', 'protected-fill', () => protPopup.remove());
+  }}
 }}
 
 // ── Controls ──────────────────────────────────────────────────────────────────
@@ -704,6 +822,12 @@ document.getElementById('play-btn').addEventListener('click', () => {{
 document.querySelectorAll('.metric-btn').forEach(btn => {{
   btn.addEventListener('click', () => updateMetric(btn.dataset.metric));
 }});
+
+document.getElementById('protected-toggle').addEventListener('change', (e) => {{
+  const vis = e.target.checked ? 'visible' : 'none';
+  if (map.getLayer('protected-fill')) map.setLayoutProperty('protected-fill', 'visibility', vis);
+  if (map.getLayer('protected-line')) map.setLayoutProperty('protected-line', 'visibility', vis);
+}});
 </script>
 </body>
 </html>"""
@@ -728,6 +852,8 @@ def main() -> None:
     if bbs_routes:
         print(f"BBS routes: {len(bbs_routes)} with responsive exposure data")
 
+    protected_lands = build_protected_lands_geojson(PROTECTED_LANDS)
+
     print("Building HTML ...")
     html = build_html(
         lookup_lbs, lookup_aquatic, lookup_avian,
@@ -736,6 +862,7 @@ def main() -> None:
         sqrt_max_lbs, sqrt_max_aquatic, sqrt_max_avian,
         bbs_routes,
         classes, years,
+        protected_lands=protected_lands,
     )
 
     MAP_OUTPUT.write_text(html, encoding="utf-8")
