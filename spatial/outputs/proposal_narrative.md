@@ -86,7 +86,7 @@ Mist-netting sites will be selected from the Level 2 acoustic stations based on 
 
 ## Why This Study, Why Now
 
-Three things have converged to make this proposal timely.
+Four things have converged to make this proposal timely.
 
 **The natural experiment is aging.** The chlorpyrifos cancellation took effect in 2019-2020. Population-level effects of a major pesticide shift, mediated through prey-base disruption, would be expected to manifest over 3–7 years as recruitment cohorts under the new exposure regime enter the breeding population. If a signal exists in the BBS data, the 2022–2026 window is when it would become detectable above the noise floor. Waiting diminishes statistical power.
 
@@ -94,7 +94,9 @@ Three things have converged to make this proposal timely.
 
 **The monitoring gap is specific and fillable.** The 14 unsurveyed high-exposure routes are not scattered randomly across the state; they cluster in the San Joaquin Valley and Imperial Valley in a pattern that reflects the BBS network's sparse coverage of intensive row-crop agriculture. A targeted 14-route AudioMoth deployment at $80/unit is among the most cost-effective monitoring investments available for addressing this gap.
 
-CDPR's Ecosystem Monitoring program is positioned to answer the question that no other California monitoring program is currently designed to address: what biological effects, if any, has the post-chlorpyrifos pesticide regime produced in the non-target wildlife that depends on California's agricultural insect communities? The PUR database is the most detailed pesticide use record in the world. The missing piece is a biological monitoring design that uses that record's spatial and temporal resolution. This proposal provides it.
+**The residual-OP exposure story is fresh and undocumented at the bird-population scale.** The chlorpyrifos cliff has been characterized in the academic and regulatory literature; the persistence of naled, malathion, and dimethoate in Tulare basin cotton — and their geographic concentration within drift distance of five protected areas — emerged from the Level 1 pipeline analysis built for this proposal and has not been independently monitored. The TIPTON–Pixley–Kern triangle described above addresses an exposure pattern that is current, geographically specific, and not currently measured by any other California monitoring program. The window to characterize it before further regulatory or use-pattern shifts intervene is open now.
+
+CDPR's Ecosystem Monitoring program is positioned to answer the question that no other California monitoring program is currently designed to address: what biological effects, if any, has the post-chlorpyrifos pesticide regime — both the statewide rise in pyrethroid intensity and the residual concentration of avian-toxic OPs in cotton landscapes — produced in the non-target wildlife that depends on California's agricultural insect communities? The PUR database is the most detailed pesticide use record in the world. The missing piece is a biological monitoring design that uses that record's spatial and temporal resolution. This proposal provides it.
 
 ---
 
@@ -114,10 +116,12 @@ PUR data are publicly available from CDPR. BBS data are publicly available from 
 |---|---|---|
 | 1 | Year 1 | Route-level exposure-abundance model results; published or submitted manuscript |
 | 1 | Year 1 | Reproducible PUR spatial pipeline, open-source on GitHub, usable by CDPR for future monitoring analyses |
-| 2 | Years 1–3 | Annual acoustic monitoring reports for 14 high-exposure routes; detection index time series |
+| 1 | Year 1 | Interactive section-level pesticide map (PLSS resolution, 2015–2023, all 44 insecticide active ingredients, three metric views, with federal NWR and CDFW state-lands overlays). A working prototype is already available for CDPR review; the final deliverable is a public-facing version hosted for long-term reference use. |
+| 2 | Years 1–3 | Annual acoustic monitoring reports for 14 high-exposure routes plus 2 refuge-interior stations (Pixley NWR, Kern NWR) anchoring the TIPTON–Pixley–Kern triangle; detection index time series for pyrethroid and OP application events |
 | 2 | Year 3 | Analysis of application-event acoustic response; manuscript |
-| 3 | Years 2–3 | Residue screening results for focal species at paired high/low-exposure sites |
-| 3 | Year 3 | Integrated synthesis: PUR exposure → acoustic detection → tissue burden |
+| 3 | Years 2–3 | Dual-panel residue screening (3-phenoxybenzoic acid for pyrethroids; dichlorvos, malaoxon, omethoate for naled / malathion / dimethoate; plasma AChE inhibition assay) at paired refuge-interior and ag-perimeter sites |
+| 3 | Year 3 | Integrated synthesis: PUR exposure → acoustic detection → tissue burden, with the TIPTON–Pixley–Kern triangle as the worked example linking all three levels at one landscape |
+| Cross | Year 3 | Methods exemplar for CDPR future monitoring of substitution chemistries: documented chain from PUR pipeline → site selection → acoustic + residue confirmation, transferable to neonicotinoids, diamides, or any future chemistry shift |
 
 The spatial pipeline and model inputs will be delivered to CDPR regardless of biological outcome. Even if no population-level signal is detected, the infrastructure for linking CDPR's application records to wildlife monitoring will exist and will be available for future studies, future chemistries, and future regulatory events.
 
