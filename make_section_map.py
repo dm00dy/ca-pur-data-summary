@@ -11,6 +11,9 @@ Three metric views:
   - Aquatic tox units     (lbs / Daphnia LC50 μg/L — proxy for prey-base disruption)
   - Avian tox units       (lbs / avian oral LD50 mg/kg — proxy for direct mortality risk)
 
+BBS route dots resize and update tooltips to match the selected year, class,
+and metric (via spatial join: PLSS section centroids within 5 km of each route).
+
 Usage:
     source .venv/bin/activate
     python make_section_map.py
@@ -19,11 +22,13 @@ Usage:
 Data sources (already on disk — no downloads needed):
     spatial/outputs/pur_sections.parquet  — 5M PUR records geocoded to sections
     spatial/data/plss_ca.gpkg            — California PLSS section polygons
+    spatial/outputs/bbs_locations.csv    — BBS route centroids
 """
 
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import geopandas as gpd
@@ -63,8 +68,8 @@ COUNTY_NAMES: dict[str, str] = {
 # DATA PREPARATION
 # ---------------------------------------------------------------------------
 
-def build_lookup(parquet_path: Path) -> tuple[dict, dict, dict, dict, set, list, list]:
-    """Aggregate PUR records → three section × year × class lookup dicts."""
+def build_lookup(parquet_path: Path) -> tuple:
+    """Aggregate PUR records → three section × year × class lookup dicts + raw agg."""
     print("Loading PUR section data ...")
     df = pd.read_parquet(
         parquet_path,
@@ -121,7 +126,7 @@ def build_lookup(parquet_path: Path) -> tuple[dict, dict, dict, dict, set, list,
     classes = sorted(agg["chem_class"].unique())
     years   = sorted(agg["year"].unique())
 
-    return lookup_lbs, lookup_aquatic, lookup_avian, sec_county, active, classes, years
+    return lookup_lbs, lookup_aquatic, lookup_avian, sec_county, active, classes, years, agg
 
 
 def build_geojson(plss_path: Path, active: set, sec_county: dict) -> dict:
@@ -152,20 +157,111 @@ def build_geojson(plss_path: Path, active: set, sec_county: dict) -> dict:
     return {"type": "FeatureCollection", "features": features}
 
 
-def load_bbs() -> dict | None:
-    if not BBS_CSV.exists():
-        return None
-    df = pd.read_csv(BBS_CSV)
-    max_exp = df["lbs_ai_5km"].max()
-    return {
-        "lat":   df["latitude"].tolist(),
-        "lon":   df["longitude"].tolist(),
-        "size":  (df["lbs_ai_5km"] / max_exp * 10 + 5).round(1).tolist(),
-        "hover": df.apply(
-            lambda r: f"BBS: {r['RouteName']}<br>{r['lbs_ai_5km']:,.0f} lbs AI within 5 km",
-            axis=1,
-        ).tolist(),
-    }
+def build_bbs_lookup(bbs_csv: Path, plss_path: Path, agg: pd.DataFrame) -> tuple:
+    """
+    For each BBS route, compute lbs_ai and tox units within 5 km per year and class.
+
+    Spatial join: PLSS section centroids → 5 km buffers around BBS route points.
+    Returns three lookup dicts (same structure as section lookups), sqrt-of-max
+    values for scaling circle radii, and route metadata for GeoJSON.
+    """
+    if not bbs_csv.exists():
+        print("BBS CSV not found — skipping BBS layer")
+        return None, None, None, 0.0, 0.0, 0.0, []
+
+    print("Computing BBS route exposures (spatial join) ...")
+    bbs_df = pd.read_csv(bbs_csv).reset_index(drop=True)
+    n_routes = len(bbs_df)
+    bbs_df["ri"] = [str(i) for i in range(n_routes)]
+
+    # BBS points → 5 km buffers in California Albers (metric)
+    bbs_gdf = gpd.GeoDataFrame(
+        bbs_df[["ri"]],
+        geometry=gpd.points_from_xy(bbs_df["longitude"], bbs_df["latitude"]),
+        crs="EPSG:4326",
+    ).to_crs("EPSG:3310")
+    bbs_gdf = bbs_gdf.copy()
+    bbs_gdf["geometry"] = bbs_gdf.geometry.buffer(5000)
+
+    # PLSS section centroids for active sections
+    print("  Loading PLSS centroids for spatial join ...")
+    plss_gdf = gpd.read_file(plss_path)
+    active_secs = set(agg["section_key"].unique())
+    plss_gdf = plss_gdf[plss_gdf["section_key"].isin(active_secs)].copy()
+    plss_gdf = plss_gdf.to_crs("EPSG:3310")
+    plss_cents = gpd.GeoDataFrame(
+        plss_gdf[["section_key"]],
+        geometry=plss_gdf.geometry.centroid,
+        crs="EPSG:3310",
+    )
+
+    # Spatial join: which section centroids fall within each BBS buffer?
+    joined = gpd.sjoin(
+        plss_cents,
+        bbs_gdf[["ri", "geometry"]],
+        how="inner",
+        predicate="within",
+    )
+    print(f"  {len(joined):,} section × route pairs within 5 km")
+
+    # Merge with PUR aggregated data
+    merged = joined[["section_key", "ri"]].merge(
+        agg[["section_key", "year", "chem_class", "lbs_ai", "tox_aquatic", "tox_avian"]],
+        on="section_key",
+        how="inner",
+    )
+    merged["ri"] = merged["ri"].astype(str)
+
+    bbs_agg = (
+        merged.groupby(["ri", "year", "chem_class"])
+        .agg(
+            lbs_ai=("lbs_ai",      "sum"),
+            tox_aquatic=("tox_aquatic", "sum"),
+            tox_avian=("tox_avian",   "sum"),
+        )
+        .reset_index()
+    )
+    bbs_agg["lbs_ai"]      = bbs_agg["lbs_ai"].round(2)
+    bbs_agg["tox_aquatic"] = bbs_agg["tox_aquatic"].round(4)
+    bbs_agg["tox_avian"]   = bbs_agg["tox_avian"].round(4)
+
+    def make_bbs_lookup(value_col: str) -> dict:
+        sub = bbs_agg[bbs_agg[value_col] > 0]
+        lookup: dict = {}
+        for year, yr_grp in sub.groupby("year"):
+            lookup[str(year)] = {
+                cls: grp.set_index("ri")[value_col].to_dict()
+                for cls, grp in yr_grp.groupby("chem_class")
+            }
+        return lookup
+
+    lookup_lbs     = make_bbs_lookup("lbs_ai")
+    lookup_aquatic = make_bbs_lookup("tox_aquatic")
+    lookup_avian   = make_bbs_lookup("tox_avian")
+
+    max_lbs     = float(bbs_agg["lbs_ai"].max())      if len(bbs_agg) > 0 else 1.0
+    max_aquatic = float(bbs_agg["tox_aquatic"].max())  if len(bbs_agg) > 0 else 1.0
+    max_avian   = float(bbs_agg["tox_avian"].max())    if len(bbs_agg) > 0 else 1.0
+
+    sqrt_max_lbs     = round(math.sqrt(max_lbs),     2)
+    sqrt_max_aquatic = round(math.sqrt(max_aquatic), 4)
+    sqrt_max_avian   = round(math.sqrt(max_avian),   4)
+
+    print(f"  max lbs={max_lbs:.0f}  aquatic={max_aquatic:.3f}  avian={max_avian:.4f}")
+
+    route_meta = [
+        {
+            "ri":   str(i),
+            "name": row["RouteName"],
+            "lat":  row["latitude"],
+            "lon":  row["longitude"],
+        }
+        for i, row in bbs_df.iterrows()
+    ]
+
+    return (lookup_lbs, lookup_aquatic, lookup_avian,
+            sqrt_max_lbs, sqrt_max_aquatic, sqrt_max_avian,
+            route_meta)
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +273,13 @@ def build_html(
     lookup_aquatic: dict,
     lookup_avian: dict,
     geojson: dict,
-    bbs: dict | None,
+    bbs_lookup_lbs: dict | None,
+    bbs_lookup_aquatic: dict | None,
+    bbs_lookup_avian: dict | None,
+    sqrt_max_lbs: float,
+    sqrt_max_aquatic: float,
+    sqrt_max_avian: float,
+    bbs_routes: list,
     classes: list,
     years: list,
 ) -> str:
@@ -185,10 +287,16 @@ def build_html(
     aquatic_json = json.dumps(lookup_aquatic, separators=(",", ":"))
     avian_json   = json.dumps(lookup_avian,   separators=(",", ":"))
     geojson_str  = json.dumps(geojson,        separators=(",", ":"))
-    bbs_json     = json.dumps(bbs,            separators=(",", ":"))
+
+    bbs_lbs_json     = json.dumps(bbs_lookup_lbs     or {}, separators=(",", ":"))
+    bbs_aquatic_json = json.dumps(bbs_lookup_aquatic or {}, separators=(",", ":"))
+    bbs_avian_json   = json.dumps(bbs_lookup_avian   or {}, separators=(",", ":"))
+    bbs_routes_json  = json.dumps(bbs_routes,              separators=(",", ":"))
+
     classes_json = json.dumps(classes)
     years_json   = json.dumps([str(y) for y in years])
     n_years      = len(years) - 1
+    has_bbs      = "true" if bbs_routes else "false"
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -263,7 +371,7 @@ def build_html(
 
 <div id="header">
   <h1>California Agricultural Insecticide Use — PLSS Section Level (~1 mi²), 2015–2023</h1>
-  <p>CDPR Pesticide Use Reports · select class, year, and metric · hover sections for values · blue dots = BBS monitoring routes</p>
+  <p>CDPR Pesticide Use Reports · select class, year, and metric · hover sections for values · blue dots = BBS monitoring routes (sized by exposure within 5 km)</p>
 </div>
 
 <div id="controls">
@@ -307,39 +415,58 @@ def build_html(
 const LOOKUP_LBS     = {lbs_json};
 const LOOKUP_AQUATIC = {aquatic_json};
 const LOOKUP_AVIAN   = {avian_json};
-const SECTIONS = {geojson_str};
-const BBS      = {bbs_json};
-const CLASSES  = {classes_json};
-const YEARS    = {years_json};
+const SECTIONS       = {geojson_str};
+
+const BBS_LOOKUP_LBS     = {bbs_lbs_json};
+const BBS_LOOKUP_AQUATIC = {bbs_aquatic_json};
+const BBS_LOOKUP_AVIAN   = {bbs_avian_json};
+const BBS_ROUTES         = {bbs_routes_json};
+const HAS_BBS            = {has_bbs};
+
+// sqrt-of-max values for each metric, used to scale circle radii
+const BBS_SQRT_MAX = {{
+  lbs:     {sqrt_max_lbs},
+  aquatic: {sqrt_max_aquatic},
+  avian:   {sqrt_max_avian},
+}};
+
+const CLASSES = {classes_json};
+const YEARS   = {years_json};
 
 // ── Metric configuration ──────────────────────────────────────────────────────
-// steps: flat array of [threshold, color, threshold, color, ...] for MapLibre step expr
-// Thresholds tuned to the actual data distribution (p50/p90/p99 checked at build time)
+// steps: flat array of [threshold, color, ...] for MapLibre step expression.
+// Thresholds tuned to actual data distribution (p50/p90/p99 checked at build time).
 const METRIC_CONFIG = {{
   lbs: {{
-    lookup:   LOOKUP_LBS,
-    label:    'Lbs AI applied / section',
-    fmt:      v => v.toLocaleString('en-US', {{maximumFractionDigits:1}}) + ' lbs AI',
-    steps:    [1,'#ffffcc', 10,'#fed976', 100,'#fd8d3c', 1000,'#e31a1c', 5000,'#800026'],
-    gradient: 'linear-gradient(to right,#ffffcc,#fed976,#fd8d3c,#e31a1c,#800026)',
+    lookup:    LOOKUP_LBS,
+    bbsLookup: BBS_LOOKUP_LBS,
+    label:     'Lbs AI applied / section',
+    fmt:       v => v.toLocaleString('en-US', {{maximumFractionDigits:1}}) + ' lbs AI',
+    bbsFmt:    v => v.toLocaleString('en-US', {{maximumFractionDigits:0}}) + ' lbs AI within 5 km',
+    steps:     [1,'#ffffcc', 10,'#fed976', 100,'#fd8d3c', 1000,'#e31a1c', 5000,'#800026'],
+    gradient:  'linear-gradient(to right,#ffffcc,#fed976,#fd8d3c,#e31a1c,#800026)',
     legLo: '<1 lb', legHi: '>5,000 lbs',
   }},
   aquatic: {{
-    lookup:   LOOKUP_AQUATIC,
+    lookup:    LOOKUP_AQUATIC,
+    bbsLookup: BBS_LOOKUP_AQUATIC,
     // Units: lbs_ai / Daphnia LC50 (μg/L) — higher = more hazard to aquatic invertebrates
-    label:    'Aquatic tox units (lbs ÷ Daphnia LC50)',
-    fmt:      v => v.toFixed(3) + ' tox units',
-    steps:    [0.001,'#c6dbef', 0.1,'#6baed6', 10,'#2171b5', 1000,'#084594', 10000,'#08306b'],
-    gradient: 'linear-gradient(to right,#c6dbef,#6baed6,#2171b5,#084594,#08306b)',
+    label:     'Aquatic tox units (lbs ÷ Daphnia LC50)',
+    fmt:       v => v.toFixed(3) + ' tox units',
+    bbsFmt:    v => v.toFixed(2) + ' tox units within 5 km',
+    steps:     [0.001,'#c6dbef', 0.1,'#6baed6', 10,'#2171b5', 1000,'#084594', 10000,'#08306b'],
+    gradient:  'linear-gradient(to right,#c6dbef,#6baed6,#2171b5,#084594,#08306b)',
     legLo: '<0.001', legHi: '>10,000',
   }},
   avian: {{
-    lookup:   LOOKUP_AVIAN,
-    // Units: lbs_ai / avian oral LD50 (mg/kg) — higher = more direct mortality hazard to birds
-    label:    'Avian tox units (lbs ÷ oral LD50)',
-    fmt:      v => v.toFixed(4) + ' tox units',
-    steps:    [0.001,'#fcc5c0', 0.01,'#f768a1', 1,'#c51b8a', 10,'#7a0177', 100,'#49006a'],
-    gradient: 'linear-gradient(to right,#fcc5c0,#f768a1,#c51b8a,#7a0177,#49006a)',
+    lookup:    LOOKUP_AVIAN,
+    bbsLookup: BBS_LOOKUP_AVIAN,
+    // Units: lbs_ai / avian oral LD50 (mg/kg) — higher = more direct mortality hazard
+    label:     'Avian tox units (lbs ÷ oral LD50)',
+    fmt:       v => v.toFixed(4) + ' tox units',
+    bbsFmt:    v => v.toFixed(3) + ' tox units within 5 km',
+    steps:     [0.001,'#fcc5c0', 0.01,'#f768a1', 1,'#c51b8a', 10,'#7a0177', 100,'#49006a'],
+    gradient:  'linear-gradient(to right,#fcc5c0,#f768a1,#c51b8a,#7a0177,#49006a)',
     legLo: '<0.001', legHi: '>100',
   }},
 }};
@@ -365,6 +492,16 @@ map.addControl(new maplibregl.ScaleControl({{ unit: 'imperial' }}), 'bottom-righ
 function makeColorExpr(steps) {{
   return ['step', ['coalesce', ['feature-state', 'lbs'], 0],
     'rgba(0,0,0,0)', ...steps];
+}}
+
+// Circle radius scales with sqrt(value) so area ∝ value.
+// sqrtMax is the sqrt of the maximum value for the current metric.
+function makeBBSRadiusExpr(sqrtMax) {{
+  if (!sqrtMax || sqrtMax <= 0) return 6;
+  return ['interpolate', ['linear'],
+    ['sqrt', ['coalesce', ['feature-state', 'lbs'], 0]],
+    0, 4, sqrtMax, 16
+  ];
 }}
 
 map.on('load', () => {{
@@ -401,15 +538,17 @@ map.on('load', () => {{
     }},
   }});
 
-  if (BBS) {{
+  if (HAS_BBS && BBS_ROUTES.length > 0) {{
     map.addSource('bbs', {{
       type: 'geojson',
+      promoteId: 'ri',
       data: {{
         type: 'FeatureCollection',
-        features: BBS.lat.map((lat, i) => ({{
+        features: BBS_ROUTES.map(r => ({{
           type: 'Feature',
-          geometry: {{ type: 'Point', coordinates: [BBS.lon[i], lat] }},
-          properties: {{ label: BBS.hover[i], r: BBS.size[i] }},
+          id: r.ri,
+          geometry: {{ type: 'Point', coordinates: [r.lon, r.lat] }},
+          properties: {{ ri: r.ri, name: r.name }},
         }})),
       }},
     }});
@@ -419,7 +558,7 @@ map.on('load', () => {{
       source: 'bbs',
       paint: {{
         'circle-color': '#2196F3',
-        'circle-radius': ['get', 'r'],
+        'circle-radius': makeBBSRadiusExpr(BBS_SQRT_MAX.lbs),
         'circle-opacity': 0.85,
         'circle-stroke-width': 1.5,
         'circle-stroke-color': 'white',
@@ -427,7 +566,7 @@ map.on('load', () => {{
     }});
   }}
 
-  updateSections();
+  updateAll();
   setupHover();
 }});
 
@@ -441,6 +580,20 @@ function updateSections() {{
   }}
 }}
 
+function updateBBS() {{
+  if (!HAS_BBS || !map.getSource('bbs')) return;
+  map.removeFeatureState({{ source: 'bbs' }});
+  const classData = METRIC_CONFIG[currentMetric].bbsLookup[YEARS[currentYearIdx]]?.[currentClass] ?? {{}};
+  for (const [ri, val] of Object.entries(classData)) {{
+    map.setFeatureState({{ source: 'bbs', id: ri }}, {{ lbs: val }});
+  }}
+}}
+
+function updateAll() {{
+  updateSections();
+  updateBBS();
+}}
+
 // ── Metric switch ─────────────────────────────────────────────────────────────
 function updateMetric(metric) {{
   currentMetric = metric;
@@ -452,13 +605,17 @@ function updateMetric(metric) {{
   document.getElementById('leg-label').textContent       = cfg.label;
   document.querySelectorAll('.metric-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.metric === metric));
-  updateSections();
+  if (HAS_BBS && map.getLayer('bbs-circles')) {{
+    map.setPaintProperty('bbs-circles', 'circle-radius',
+      makeBBSRadiusExpr(BBS_SQRT_MAX[metric]));
+  }}
+  updateAll();
 }}
 
 // ── Hover tooltips ────────────────────────────────────────────────────────────
 function setupHover() {{
   const popup    = new maplibregl.Popup({{ closeButton: false, closeOnClick: false, maxWidth: '260px' }});
-  const bbsPopup = new maplibregl.Popup({{ closeButton: false, closeOnClick: false }});
+  const bbsPopup = new maplibregl.Popup({{ closeButton: false, closeOnClick: false, maxWidth: '280px' }});
 
   map.on('mousemove', 'sections-fill', (e) => {{
     map.getCanvas().style.cursor = 'crosshair';
@@ -479,11 +636,21 @@ function setupHover() {{
     popup.remove();
   }});
 
-  if (BBS) {{
+  if (HAS_BBS && BBS_ROUTES.length > 0) {{
     map.on('mousemove', 'bbs-circles', (e) => {{
       map.getCanvas().style.cursor = 'pointer';
-      bbsPopup.setLngLat(e.lngLat)
-        .setHTML(`<b>BBS Route</b><br>${{e.features[0].properties.label}}`).addTo(map);
+      const props = e.features[0].properties;
+      const ri    = props.ri;
+      const cfg   = METRIC_CONFIG[currentMetric];
+      const val   = cfg.bbsLookup[YEARS[currentYearIdx]]?.[currentClass]?.[ri] ?? 0;
+      const valStr = val > 0
+        ? `<span class="metric-val">${{cfg.bbsFmt(val)}}</span>`
+        : `<span style="color:#888">No ${{currentClass}} use recorded</span>`;
+      bbsPopup.setLngLat(e.lngLat).setHTML(
+        `<b>BBS: ${{props.name}}</b><br>`+
+        `${{currentClass}} · ${{YEARS[currentYearIdx]}}<br>`+
+        valStr
+      ).addTo(map);
     }});
     map.on('mouseleave', 'bbs-circles', () => {{
       map.getCanvas().style.cursor = '';
@@ -500,12 +667,12 @@ CLASSES.forEach(c => {{
   opt.textContent = c;
   sel.appendChild(opt);
 }});
-sel.addEventListener('change', () => {{ currentClass = sel.value; updateSections(); }});
+sel.addEventListener('change', () => {{ currentClass = sel.value; updateAll(); }});
 
 document.getElementById('year-slider').addEventListener('input', (e) => {{
   currentYearIdx = parseInt(e.target.value);
   document.getElementById('year-display').textContent = YEARS[currentYearIdx];
-  updateSections();
+  updateAll();
 }});
 
 document.getElementById('play-btn').addEventListener('click', () => {{
@@ -523,7 +690,7 @@ document.getElementById('play-btn').addEventListener('click', () => {{
       currentYearIdx++;
       document.getElementById('year-slider').value        = currentYearIdx;
       document.getElementById('year-display').textContent = YEARS[currentYearIdx];
-      updateSections();
+      updateAll();
     }}, 900);
   }}
 }});
@@ -543,14 +710,27 @@ document.querySelectorAll('.metric-btn').forEach(btn => {{
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    lookup_lbs, lookup_aquatic, lookup_avian, sec_county, active, classes, years = build_lookup(SECTIONS_PARQUET)
+    (lookup_lbs, lookup_aquatic, lookup_avian,
+     sec_county, active, classes, years, agg) = build_lookup(SECTIONS_PARQUET)
+
     geojson = build_geojson(PLSS_GPKG, active, sec_county)
-    bbs = load_bbs()
-    if bbs:
-        print(f"BBS routes:  {len(bbs['lat'])} points")
+
+    (bbs_lookup_lbs, bbs_lookup_aquatic, bbs_lookup_avian,
+     sqrt_max_lbs, sqrt_max_aquatic, sqrt_max_avian,
+     bbs_routes) = build_bbs_lookup(BBS_CSV, PLSS_GPKG, agg)
+
+    if bbs_routes:
+        print(f"BBS routes: {len(bbs_routes)} with responsive exposure data")
 
     print("Building HTML ...")
-    html = build_html(lookup_lbs, lookup_aquatic, lookup_avian, geojson, bbs, classes, years)
+    html = build_html(
+        lookup_lbs, lookup_aquatic, lookup_avian,
+        geojson,
+        bbs_lookup_lbs, bbs_lookup_aquatic, bbs_lookup_avian,
+        sqrt_max_lbs, sqrt_max_aquatic, sqrt_max_avian,
+        bbs_routes,
+        classes, years,
+    )
 
     MAP_OUTPUT.write_text(html, encoding="utf-8")
     size_mb = MAP_OUTPUT.stat().st_size / 1e6
