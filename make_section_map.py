@@ -70,6 +70,26 @@ COUNTY_NAMES: dict[str, str] = {
     "58": "Yuba",
 }
 
+# Story chemicals for the featured-chemical panel.
+# Displayed in order; each must exist as chemname in pur_sections.parquet.
+FEATURED_CHEMS: list[str] = [
+    "chlorpyrifos", "bifenthrin", "permethrin", "lambda-cyhalothrin", "oxamyl",
+]
+CHEM_CLASS_LABELS: dict[str, str] = {
+    "chlorpyrifos":       "Organophosphate",
+    "bifenthrin":         "Pyrethroid",
+    "permethrin":         "Pyrethroid",
+    "lambda-cyhalothrin": "Pyrethroid",
+    "oxamyl":             "Carbamate",
+}
+CHEM_DISPLAY_NAMES: dict[str, str] = {
+    "chlorpyrifos":       "Chlorpyrifos",
+    "bifenthrin":         "Bifenthrin",
+    "permethrin":         "Permethrin",
+    "lambda-cyhalothrin": "λ-Cyhalothrin",
+    "oxamyl":             "Oxamyl",
+}
+
 
 # ---------------------------------------------------------------------------
 # DATA PREPARATION
@@ -80,7 +100,7 @@ def build_lookup(parquet_path: Path) -> tuple:
     print("Loading PUR section data ...")
     df = pd.read_parquet(
         parquet_path,
-        columns=["section_key", "year", "chem_class", "lbs_ai", "county_cd",
+        columns=["section_key", "year", "chem_class", "chemname", "lbs_ai", "county_cd",
                  "avian_ld50", "aquatic_lc50"],
     )
     print(f"  {len(df):,} application records")
@@ -133,7 +153,71 @@ def build_lookup(parquet_path: Path) -> tuple:
     classes = sorted(agg["chem_class"].unique())
     years   = sorted(agg["year"].unique())
 
-    return lookup_lbs, lookup_aquatic, lookup_avian, sec_county, active, classes, years, agg
+    # ── Featured-chemical aggregation ─────────────────────────────────────────
+    LBS_COLORS     = ["#ffffcc", "#fed976", "#fd8d3c", "#e31a1c", "#800026"]
+    AQUATIC_COLORS = ["#c6dbef", "#6baed6", "#2171b5", "#084594", "#08306b"]
+    AVIAN_COLORS   = ["#fcc5c0", "#f768a1", "#c51b8a", "#7a0177", "#49006a"]
+
+    def _compute_steps(v: pd.Series, colors: list) -> list | None:
+        v = v[v > 0].dropna()
+        if len(v) < 5:
+            return None
+        quants = [float(v.quantile(q)) for q in [0.10, 0.50, 0.90, 0.99, 1.0]]
+        for i in range(1, len(quants)):
+            if quants[i] <= quants[i - 1]:
+                quants[i] = quants[i - 1] * 1.5
+        result: list = []
+        for t, c in zip(quants, colors):
+            result.extend([round(t, 6), c])
+        return result
+
+    chem_df  = df[df["chemname"].isin(FEATURED_CHEMS)].copy()
+    chem_agg = (
+        chem_df.groupby(["section_key", "year", "chemname"])
+        .agg(
+            lbs_ai=("lbs_ai",      "sum"),
+            tox_aquatic=("tox_aquatic", "sum"),
+            tox_avian=("tox_avian",   "sum"),
+        )
+        .reset_index()
+    )
+    chem_agg["lbs_ai"]      = chem_agg["lbs_ai"].round(2)
+    chem_agg["tox_aquatic"] = chem_agg["tox_aquatic"].round(4)
+    chem_agg["tox_avian"]   = chem_agg["tox_avian"].round(4)
+    print(f"  Featured chemicals: {len(chem_agg):,} section × year × chem rows")
+
+    def make_chem_lookup(value_col: str) -> dict:
+        sub = chem_agg[chem_agg[value_col] > 0]
+        lkp: dict = {}
+        for year, yr_grp in sub.groupby("year"):
+            lkp[str(year)] = {
+                chem: grp.set_index("section_key")[value_col].to_dict()
+                for chem, grp in yr_grp.groupby("chemname")
+            }
+        return lkp
+
+    chem_lookup_lbs     = make_chem_lookup("lbs_ai")
+    chem_lookup_aquatic = make_chem_lookup("tox_aquatic")
+    chem_lookup_avian   = make_chem_lookup("tox_avian")
+
+    # Per-chemical color-step thresholds calibrated to each chem's distribution
+    chem_configs: dict = {}
+    for chem in FEATURED_CHEMS:
+        sub = chem_agg[chem_agg["chemname"] == chem]
+        cls = CHEM_CLASS_LABELS.get(chem, "")
+        dsp = CHEM_DISPLAY_NAMES.get(chem, chem.title())
+        chem_configs[chem] = {
+            "label":         f"{dsp} ({cls})",
+            "lbs_steps":     _compute_steps(sub["lbs_ai"],      LBS_COLORS),
+            "aquatic_steps": _compute_steps(sub["tox_aquatic"],  AQUATIC_COLORS),
+            "avian_steps":   _compute_steps(sub["tox_avian"],    AVIAN_COLORS),
+        }
+        print(f"  {chem}: lbs_max={sub['lbs_ai'].max():.0f}  "
+              f"aq_max={sub['tox_aquatic'].max():.3f}  "
+              f"av_max={sub['tox_avian'].max():.4f}")
+
+    return (lookup_lbs, lookup_aquatic, lookup_avian, sec_county, active, classes, years, agg,
+            chem_lookup_lbs, chem_lookup_aquatic, chem_lookup_avian, chem_agg, chem_configs)
 
 
 def build_geojson(plss_path: Path, active: set, sec_county: dict) -> dict:
@@ -164,7 +248,10 @@ def build_geojson(plss_path: Path, active: set, sec_county: dict) -> dict:
     return {"type": "FeatureCollection", "features": features}
 
 
-def build_bbs_lookup(bbs_csv: Path, plss_path: Path, agg: pd.DataFrame) -> tuple:
+def build_bbs_lookup(
+    bbs_csv: Path, plss_path: Path, agg: pd.DataFrame,
+    chem_agg: pd.DataFrame | None = None,
+) -> tuple:
     """
     For each BBS route, compute lbs_ai and tox units within 5 km per year and class.
 
@@ -174,7 +261,7 @@ def build_bbs_lookup(bbs_csv: Path, plss_path: Path, agg: pd.DataFrame) -> tuple
     """
     if not bbs_csv.exists():
         print("BBS CSV not found — skipping BBS layer")
-        return None, None, None, 0.0, 0.0, 0.0, []
+        return None, None, None, 0.0, 0.0, 0.0, [], {}, {}, {}, {}
 
     print("Computing BBS route exposures (spatial join) ...")
     bbs_df = pd.read_csv(bbs_csv).reset_index(drop=True)
@@ -256,6 +343,56 @@ def build_bbs_lookup(bbs_csv: Path, plss_path: Path, agg: pd.DataFrame) -> tuple
 
     print(f"  max lbs={max_lbs:.0f}  aquatic={max_aquatic:.3f}  avian={max_avian:.4f}")
 
+    # ── Featured-chemical BBS lookups ─────────────────────────────────────────
+    bbs_chem_lookup_lbs: dict = {}
+    bbs_chem_lookup_aquatic: dict = {}
+    bbs_chem_lookup_avian: dict = {}
+    bbs_chem_sqrt_max: dict = {}
+    if chem_agg is not None and len(chem_agg) > 0:
+        chem_merged = joined[["section_key", "ri"]].merge(
+            chem_agg[["section_key", "year", "chemname", "lbs_ai", "tox_aquatic", "tox_avian"]],
+            on="section_key",
+            how="inner",
+        )
+        chem_merged["ri"] = chem_merged["ri"].astype(str)
+        bbs_chem_raw = (
+            chem_merged.groupby(["ri", "year", "chemname"])
+            .agg(
+                lbs_ai=("lbs_ai",      "sum"),
+                tox_aquatic=("tox_aquatic", "sum"),
+                tox_avian=("tox_avian",   "sum"),
+            )
+            .reset_index()
+        )
+        bbs_chem_raw["lbs_ai"]      = bbs_chem_raw["lbs_ai"].round(2)
+        bbs_chem_raw["tox_aquatic"] = bbs_chem_raw["tox_aquatic"].round(4)
+        bbs_chem_raw["tox_avian"]   = bbs_chem_raw["tox_avian"].round(4)
+
+        def make_bbs_chem_lookup(value_col: str) -> dict:
+            sub = bbs_chem_raw[bbs_chem_raw[value_col] > 0]
+            lkp: dict = {}
+            for year, yr_grp in sub.groupby("year"):
+                lkp[str(year)] = {
+                    chem: grp.set_index("ri")[value_col].to_dict()
+                    for chem, grp in yr_grp.groupby("chemname")
+                }
+            return lkp
+
+        bbs_chem_lookup_lbs     = make_bbs_chem_lookup("lbs_ai")
+        bbs_chem_lookup_aquatic = make_bbs_chem_lookup("tox_aquatic")
+        bbs_chem_lookup_avian   = make_bbs_chem_lookup("tox_avian")
+
+        for chem in FEATURED_CHEMS:
+            sub = bbs_chem_raw[bbs_chem_raw["chemname"] == chem]
+            if len(sub) == 0:
+                bbs_chem_sqrt_max[chem] = {"lbs": 1.0, "aquatic": 1.0, "avian": 1.0}
+            else:
+                bbs_chem_sqrt_max[chem] = {
+                    "lbs":     round(math.sqrt(max(float(sub["lbs_ai"].max()),      0.0)), 2),
+                    "aquatic": round(math.sqrt(max(float(sub["tox_aquatic"].max()), 0.0)), 4),
+                    "avian":   round(math.sqrt(max(float(sub["tox_avian"].max()),   0.0)), 4),
+                }
+
     route_meta = [
         {
             "ri":   str(i),
@@ -268,7 +405,9 @@ def build_bbs_lookup(bbs_csv: Path, plss_path: Path, agg: pd.DataFrame) -> tuple
 
     return (lookup_lbs, lookup_aquatic, lookup_avian,
             sqrt_max_lbs, sqrt_max_aquatic, sqrt_max_avian,
-            route_meta)
+            route_meta,
+            bbs_chem_lookup_lbs, bbs_chem_lookup_aquatic, bbs_chem_lookup_avian,
+            bbs_chem_sqrt_max)
 
 
 def build_protected_lands_geojson(path: Path) -> dict | None:
@@ -331,6 +470,14 @@ def build_html(
     classes: list,
     years: list,
     protected_lands: dict | None = None,
+    chem_lookup_lbs: dict | None = None,
+    chem_lookup_aquatic: dict | None = None,
+    chem_lookup_avian: dict | None = None,
+    chem_configs: dict | None = None,
+    bbs_chem_lookup_lbs: dict | None = None,
+    bbs_chem_lookup_aquatic: dict | None = None,
+    bbs_chem_lookup_avian: dict | None = None,
+    bbs_chem_sqrt_max: dict | None = None,
 ) -> str:
     lbs_json     = json.dumps(lookup_lbs,     separators=(",", ":"))
     aquatic_json = json.dumps(lookup_aquatic, separators=(",", ":"))
@@ -345,6 +492,17 @@ def build_html(
     protected_json   = json.dumps(protected_lands or {"type":"FeatureCollection","features":[]},
                                   separators=(",", ":"))
     has_protected    = "true" if protected_lands else "false"
+
+    chem_lbs_json         = json.dumps(chem_lookup_lbs     or {}, separators=(",", ":"))
+    chem_aquatic_json     = json.dumps(chem_lookup_aquatic or {}, separators=(",", ":"))
+    chem_avian_json       = json.dumps(chem_lookup_avian   or {}, separators=(",", ":"))
+    chem_configs_json     = json.dumps(chem_configs        or {}, separators=(",", ":"))
+    bbs_chem_lbs_json     = json.dumps(bbs_chem_lookup_lbs     or {}, separators=(",", ":"))
+    bbs_chem_aquatic_json = json.dumps(bbs_chem_lookup_aquatic or {}, separators=(",", ":"))
+    bbs_chem_avian_json   = json.dumps(bbs_chem_lookup_avian   or {}, separators=(",", ":"))
+    bbs_chem_sqrt_json    = json.dumps(bbs_chem_sqrt_max       or {}, separators=(",", ":"))
+    featured_chems_json   = json.dumps(FEATURED_CHEMS,              separators=(",", ":"))
+    chem_display_json     = json.dumps(CHEM_DISPLAY_NAMES,          separators=(",", ":"))
 
     classes_json = json.dumps(classes)
     years_json   = json.dumps([str(y) for y in years])
@@ -422,6 +580,18 @@ def build_html(
   .swatch-usfws {{ background: rgba(46,139,87,0.35); border-color: #2e8b57; }}
   .swatch-cdfw  {{ background: rgba(30,144,255,0.30); border-color: #1e90ff; }}
 
+  #chem-btns {{
+    display: flex; border: 1.5px solid #bbb; border-radius: 4px; overflow: hidden;
+  }}
+  .chem-btn {{
+    padding: 4px 10px; border: none; border-right: 1px solid #bbb;
+    background: white; cursor: pointer; font-size: 0.75rem; color: #555;
+    transition: background 0.12s, color 0.12s;
+  }}
+  .chem-btn:last-child {{ border-right: none; }}
+  .chem-btn:hover {{ background: #f0f4f8; }}
+  .chem-btn.active {{ background: #2d6a4f; color: white; font-weight: 600; }}
+
   #map {{ flex: 1; min-height: 0; }}
 
   .maplibregl-popup-content {{
@@ -473,6 +643,17 @@ def build_html(
   </div>
 
   <div class="ctrl-group">
+    <span class="ctrl-label">Featured chemicals</span>
+    <div id="chem-btns">
+      <button class="chem-btn" data-chem="chlorpyrifos">Chlorpyrifos</button>
+      <button class="chem-btn" data-chem="bifenthrin">Bifenthrin</button>
+      <button class="chem-btn" data-chem="permethrin">Permethrin</button>
+      <button class="chem-btn" data-chem="lambda-cyhalothrin">λ-Cyhalothrin</button>
+      <button class="chem-btn" data-chem="oxamyl">Oxamyl</button>
+    </div>
+  </div>
+
+  <div class="ctrl-group">
     <span class="ctrl-label">Overlays</span>
     <label class="overlay-toggle">
       <input type="checkbox" id="protected-toggle" checked>
@@ -500,6 +681,19 @@ const HAS_BBS            = {has_bbs};
 const PROTECTED_LANDS = {protected_json};
 const HAS_PROTECTED   = {has_protected};
 
+// Featured-chemical lookups (section × year × chemname)
+const CHEM_LOOKUP_LBS     = {chem_lbs_json};
+const CHEM_LOOKUP_AQUATIC = {chem_aquatic_json};
+const CHEM_LOOKUP_AVIAN   = {chem_avian_json};
+// Per-chemical metadata: label + quantile-calibrated color-step thresholds
+const CHEM_CONFIG         = {chem_configs_json};
+// BBS chem lookups (route × year × chemname)
+const BBS_CHEM_LOOKUP_LBS     = {bbs_chem_lbs_json};
+const BBS_CHEM_LOOKUP_AQUATIC = {bbs_chem_aquatic_json};
+const BBS_CHEM_LOOKUP_AVIAN   = {bbs_chem_avian_json};
+const BBS_CHEM_SQRT_MAX       = {bbs_chem_sqrt_json};
+const FEATURED_CHEMS          = {featured_chems_json};
+
 // sqrt-of-max values for each metric, used to scale circle radii
 const BBS_SQRT_MAX = {{
   lbs:     {sqrt_max_lbs},
@@ -515,8 +709,11 @@ const YEARS   = {years_json};
 // Thresholds tuned to actual data distribution (p50/p90/p99 checked at build time).
 const METRIC_CONFIG = {{
   lbs: {{
-    lookup:    LOOKUP_LBS,
-    bbsLookup: BBS_LOOKUP_LBS,
+    lookup:        LOOKUP_LBS,
+    chemLookup:    CHEM_LOOKUP_LBS,
+    bbsLookup:     BBS_LOOKUP_LBS,
+    bbsChemLookup: BBS_CHEM_LOOKUP_LBS,
+    stepsKey:      'lbs_steps',
     label:     'Lbs AI applied / section',
     fmt:       v => v.toLocaleString('en-US', {{maximumFractionDigits:1}}) + ' lbs AI',
     bbsFmt:    v => v.toLocaleString('en-US', {{maximumFractionDigits:0}}) + ' lbs AI within 5 km',
@@ -525,8 +722,11 @@ const METRIC_CONFIG = {{
     legLo: '<1 lb', legHi: '>5,000 lbs',
   }},
   aquatic: {{
-    lookup:    LOOKUP_AQUATIC,
-    bbsLookup: BBS_LOOKUP_AQUATIC,
+    lookup:        LOOKUP_AQUATIC,
+    chemLookup:    CHEM_LOOKUP_AQUATIC,
+    bbsLookup:     BBS_LOOKUP_AQUATIC,
+    bbsChemLookup: BBS_CHEM_LOOKUP_AQUATIC,
+    stepsKey:      'aquatic_steps',
     // Units: lbs_ai / Daphnia LC50 (μg/L) — higher = more hazard to aquatic invertebrates
     label:     'Aquatic tox units (lbs ÷ Daphnia LC50)',
     fmt:       v => v.toFixed(3) + ' tox units',
@@ -536,8 +736,11 @@ const METRIC_CONFIG = {{
     legLo: '<0.001', legHi: '>10,000',
   }},
   avian: {{
-    lookup:    LOOKUP_AVIAN,
-    bbsLookup: BBS_LOOKUP_AVIAN,
+    lookup:        LOOKUP_AVIAN,
+    chemLookup:    CHEM_LOOKUP_AVIAN,
+    bbsLookup:     BBS_LOOKUP_AVIAN,
+    bbsChemLookup: BBS_CHEM_LOOKUP_AVIAN,
+    stepsKey:      'avian_steps',
     // Units: lbs_ai / avian oral LD50 (mg/kg) — higher = more direct mortality hazard
     label:     'Avian tox units (lbs ÷ oral LD50)',
     fmt:       v => v.toFixed(4) + ' tox units',
@@ -552,6 +755,7 @@ const METRIC_CONFIG = {{
 let currentClass   = CLASSES[0];
 let currentYearIdx = 0;
 let currentMetric  = 'lbs';
+let currentChem    = null;   // null = class mode; string = featured-chemical mode
 let playTimer      = null;
 
 // ── Map ───────────────────────────────────────────────────────────────────────
@@ -685,7 +889,10 @@ map.on('load', () => {{
 function updateSections() {{
   if (!map.getSource('sections')) return;
   map.removeFeatureState({{ source: 'sections' }});
-  const classData = METRIC_CONFIG[currentMetric].lookup[YEARS[currentYearIdx]]?.[currentClass] ?? {{}};
+  const cfg        = METRIC_CONFIG[currentMetric];
+  const activeLkp  = currentChem ? cfg.chemLookup    : cfg.lookup;
+  const activeKey  = currentChem ?? currentClass;
+  const classData  = activeLkp[YEARS[currentYearIdx]]?.[activeKey] ?? {{}};
   for (const [sk, val] of Object.entries(classData)) {{
     map.setFeatureState({{ source: 'sections', id: sk }}, {{ lbs: val }});
   }}
@@ -694,7 +901,10 @@ function updateSections() {{
 function updateBBS() {{
   if (!HAS_BBS || !map.getSource('bbs')) return;
   map.removeFeatureState({{ source: 'bbs' }});
-  const classData = METRIC_CONFIG[currentMetric].bbsLookup[YEARS[currentYearIdx]]?.[currentClass] ?? {{}};
+  const cfg       = METRIC_CONFIG[currentMetric];
+  const activeLkp = currentChem ? cfg.bbsChemLookup : cfg.bbsLookup;
+  const activeKey = currentChem ?? currentClass;
+  const classData = activeLkp[YEARS[currentYearIdx]]?.[activeKey] ?? {{}};
   for (const [ri, val] of Object.entries(classData)) {{
     map.setFeatureState({{ source: 'bbs', id: ri }}, {{ lbs: val }});
   }}
@@ -705,21 +915,60 @@ function updateAll() {{
   updateBBS();
 }}
 
+// ── Chemical-mode helpers ─────────────────────────────────────────────────────
+function getChemSteps(chem, metric) {{
+  const cfg = CHEM_CONFIG[chem];
+  if (!cfg) return METRIC_CONFIG[metric].steps;
+  return cfg[METRIC_CONFIG[metric].stepsKey] ?? METRIC_CONFIG[metric].steps;
+}}
+
+function activateChem(chem) {{
+  currentChem = chem;
+  const steps = getChemSteps(chem, currentMetric);
+  map.setPaintProperty('sections-fill', 'fill-color', makeColorExpr(steps));
+  document.getElementById('leg-label').textContent =
+    CHEM_CONFIG[chem]?.label ?? chem;
+  const sqrtMax = BBS_CHEM_SQRT_MAX[chem]?.[currentMetric] ?? BBS_SQRT_MAX[currentMetric];
+  if (HAS_BBS && map.getLayer('bbs-circles'))
+    map.setPaintProperty('bbs-circles', 'circle-radius', makeBBSRadiusExpr(sqrtMax));
+  document.getElementById('class-select').style.opacity       = '0.4';
+  document.getElementById('class-select').style.pointerEvents = 'none';
+  document.querySelectorAll('.chem-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.chem === chem));
+  updateAll();
+}}
+
+function deactivateChem() {{
+  currentChem = null;
+  const cfg = METRIC_CONFIG[currentMetric];
+  map.setPaintProperty('sections-fill', 'fill-color', makeColorExpr(cfg.steps));
+  document.getElementById('leg-label').textContent = cfg.label;
+  if (HAS_BBS && map.getLayer('bbs-circles'))
+    map.setPaintProperty('bbs-circles', 'circle-radius', makeBBSRadiusExpr(BBS_SQRT_MAX[currentMetric]));
+  document.getElementById('class-select').style.opacity       = '1';
+  document.getElementById('class-select').style.pointerEvents = '';
+  document.querySelectorAll('.chem-btn').forEach(b => b.classList.remove('active'));
+  updateAll();
+}}
+
 // ── Metric switch ─────────────────────────────────────────────────────────────
 function updateMetric(metric) {{
   currentMetric = metric;
-  const cfg = METRIC_CONFIG[metric];
-  map.setPaintProperty('sections-fill', 'fill-color', makeColorExpr(cfg.steps));
+  const cfg   = METRIC_CONFIG[metric];
+  const steps = currentChem ? getChemSteps(currentChem, metric) : cfg.steps;
+  map.setPaintProperty('sections-fill', 'fill-color', makeColorExpr(steps));
   document.getElementById('leg-bar').style.background    = cfg.gradient;
   document.getElementById('leg-lo').textContent          = cfg.legLo;
   document.getElementById('leg-hi').textContent          = cfg.legHi;
-  document.getElementById('leg-label').textContent       = cfg.label;
+  document.getElementById('leg-label').textContent       =
+    currentChem ? (CHEM_CONFIG[currentChem]?.label ?? currentChem) : cfg.label;
   document.querySelectorAll('.metric-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.metric === metric));
-  if (HAS_BBS && map.getLayer('bbs-circles')) {{
-    map.setPaintProperty('bbs-circles', 'circle-radius',
-      makeBBSRadiusExpr(BBS_SQRT_MAX[metric]));
-  }}
+  const sqrtMax = currentChem
+    ? (BBS_CHEM_SQRT_MAX[currentChem]?.[metric] ?? BBS_SQRT_MAX[metric])
+    : BBS_SQRT_MAX[metric];
+  if (HAS_BBS && map.getLayer('bbs-circles'))
+    map.setPaintProperty('bbs-circles', 'circle-radius', makeBBSRadiusExpr(sqrtMax));
   updateAll();
 }}
 
@@ -730,14 +979,17 @@ function setupHover() {{
 
   map.on('mousemove', 'sections-fill', (e) => {{
     map.getCanvas().style.cursor = 'crosshair';
-    const p   = e.features[0].properties;
-    const sk  = p.sk;
-    const cfg = METRIC_CONFIG[currentMetric];
-    const val = cfg.lookup[YEARS[currentYearIdx]]?.[currentClass]?.[sk] ?? 0;
+    const p          = e.features[0].properties;
+    const sk         = p.sk;
+    const cfg        = METRIC_CONFIG[currentMetric];
+    const activeLkp  = currentChem ? cfg.chemLookup : cfg.lookup;
+    const activeKey  = currentChem ?? currentClass;
+    const val        = activeLkp[YEARS[currentYearIdx]]?.[activeKey]?.[sk] ?? 0;
+    const displayKey = currentChem ? (CHEM_CONFIG[currentChem]?.label ?? currentChem) : currentClass;
     popup.setLngLat(e.lngLat).setHTML(
       `<b>${{p.cn}} County</b>`+
       `<div style="color:#555;font-size:0.75rem;margin-bottom:4px">Section ${{sk}}</div>`+
-      `${{currentClass}}<br>`+
+      `${{displayKey}}<br>`+
       `<span class="metric-val">${{cfg.fmt(val)}}</span><br>`+
       `<span style="color:#888">Year: ${{YEARS[currentYearIdx]}}</span>`
     ).addTo(map);
@@ -750,16 +1002,19 @@ function setupHover() {{
   if (HAS_BBS && BBS_ROUTES.length > 0) {{
     map.on('mousemove', 'bbs-circles', (e) => {{
       map.getCanvas().style.cursor = 'pointer';
-      const props = e.features[0].properties;
-      const ri    = props.ri;
-      const cfg   = METRIC_CONFIG[currentMetric];
-      const val   = cfg.bbsLookup[YEARS[currentYearIdx]]?.[currentClass]?.[ri] ?? 0;
+      const props      = e.features[0].properties;
+      const ri         = props.ri;
+      const cfg        = METRIC_CONFIG[currentMetric];
+      const activeLkp  = currentChem ? cfg.bbsChemLookup : cfg.bbsLookup;
+      const activeKey  = currentChem ?? currentClass;
+      const val        = activeLkp[YEARS[currentYearIdx]]?.[activeKey]?.[ri] ?? 0;
+      const displayKey = currentChem ? (CHEM_CONFIG[currentChem]?.label ?? currentChem) : currentClass;
       const valStr = val > 0
         ? `<span class="metric-val">${{cfg.bbsFmt(val)}}</span>`
-        : `<span style="color:#888">No ${{currentClass}} use recorded</span>`;
+        : `<span style="color:#888">No ${{displayKey}} use recorded</span>`;
       bbsPopup.setLngLat(e.lngLat).setHTML(
         `<b>BBS: ${{props.name}}</b><br>`+
-        `${{currentClass}} · ${{YEARS[currentYearIdx]}}<br>`+
+        `${{displayKey}} · ${{YEARS[currentYearIdx]}}<br>`+
         valStr
       ).addTo(map);
     }});
@@ -791,7 +1046,10 @@ CLASSES.forEach(c => {{
   opt.textContent = c;
   sel.appendChild(opt);
 }});
-sel.addEventListener('change', () => {{ currentClass = sel.value; updateAll(); }});
+sel.addEventListener('change', () => {{
+  currentClass = sel.value;
+  if (currentChem) deactivateChem(); else updateAll();
+}});
 
 document.getElementById('year-slider').addEventListener('input', (e) => {{
   currentYearIdx = parseInt(e.target.value);
@@ -823,6 +1081,13 @@ document.querySelectorAll('.metric-btn').forEach(btn => {{
   btn.addEventListener('click', () => updateMetric(btn.dataset.metric));
 }});
 
+document.querySelectorAll('.chem-btn').forEach(btn => {{
+  btn.addEventListener('click', () => {{
+    if (currentChem === btn.dataset.chem) deactivateChem();
+    else activateChem(btn.dataset.chem);
+  }});
+}});
+
 document.getElementById('protected-toggle').addEventListener('change', (e) => {{
   const vis = e.target.checked ? 'visible' : 'none';
   if (map.getLayer('protected-fill')) map.setLayoutProperty('protected-fill', 'visibility', vis);
@@ -841,13 +1106,17 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     (lookup_lbs, lookup_aquatic, lookup_avian,
-     sec_county, active, classes, years, agg) = build_lookup(SECTIONS_PARQUET)
+     sec_county, active, classes, years, agg,
+     chem_lookup_lbs, chem_lookup_aquatic, chem_lookup_avian,
+     chem_agg, chem_configs) = build_lookup(SECTIONS_PARQUET)
 
     geojson = build_geojson(PLSS_GPKG, active, sec_county)
 
     (bbs_lookup_lbs, bbs_lookup_aquatic, bbs_lookup_avian,
      sqrt_max_lbs, sqrt_max_aquatic, sqrt_max_avian,
-     bbs_routes) = build_bbs_lookup(BBS_CSV, PLSS_GPKG, agg)
+     bbs_routes,
+     bbs_chem_lookup_lbs, bbs_chem_lookup_aquatic, bbs_chem_lookup_avian,
+     bbs_chem_sqrt_max) = build_bbs_lookup(BBS_CSV, PLSS_GPKG, agg, chem_agg)
 
     if bbs_routes:
         print(f"BBS routes: {len(bbs_routes)} with responsive exposure data")
@@ -863,6 +1132,14 @@ def main() -> None:
         bbs_routes,
         classes, years,
         protected_lands=protected_lands,
+        chem_lookup_lbs=chem_lookup_lbs,
+        chem_lookup_aquatic=chem_lookup_aquatic,
+        chem_lookup_avian=chem_lookup_avian,
+        chem_configs=chem_configs,
+        bbs_chem_lookup_lbs=bbs_chem_lookup_lbs,
+        bbs_chem_lookup_aquatic=bbs_chem_lookup_aquatic,
+        bbs_chem_lookup_avian=bbs_chem_lookup_avian,
+        bbs_chem_sqrt_max=bbs_chem_sqrt_max,
     )
 
     MAP_OUTPUT.write_text(html, encoding="utf-8")
