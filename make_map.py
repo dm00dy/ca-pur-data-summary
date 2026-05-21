@@ -10,17 +10,22 @@ Usage:
     python make_map.py
     # then open pur_analysis/pesticide_map.html
 
-Three toggleable metrics:
+Chemical layers:
   - Pyrethroid share of tracked lbs  →  aquatic / prey-base risk
   - Oxamyl share of tracked lbs      →  direct avian mortality risk
+  - Methomyl lbs                     →  Salinas Valley direct mortality (LD50 3.1 mg/kg)
+  - Methomyl % of state              →  concentration / last-redoubt view
   - Total tracked lbs (all three)    →  overall insecticide pressure
 
-Blue dots = BBS monitoring routes, sized by 5km pesticide exposure.
+Marker layers:
+  - Blue dots   = BBS monitoring routes, sized by 5 km pesticide exposure
+  - Red stars   = Priority AudioMoth monitoring sites (top methomyl sections)
 """
 
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -34,7 +39,6 @@ GEOJSON_URL = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-
 MAP_OUTPUT = OUTPUT_DIR / "pesticide_map.html"
 
 # CDPR sequential county code (01–58, alphabetical) → 5-digit FIPS
-# California FIPS county codes are sequential odd numbers in alphabetical order.
 def cdpr_to_fips(code: int) -> str:
     return f"06{(code * 2 - 1):03d}"
 
@@ -55,6 +59,34 @@ COUNTY_NAMES: dict[int, str] = {
     53: "Trinity", 54: "Tulare", 55: "Tuolumne", 56: "Ventura",
     57: "Yolo", 58: "Yuba",
 }
+
+# Priority AudioMoth monitoring sites — top methomyl PLSS sections, Salinas Valley
+PRIORITY_SITES = [
+    {
+        "comtrs": "27M18S06E10",
+        "label":  "P1 — T18S R6E §10",
+        "detail": "4,616 lbs (2022) · active since 2013 · ~750 apps/yr",
+        "lat": 36.3801, "lon": -121.3057,
+    },
+    {
+        "comtrs": "27M17S05E09",
+        "label":  "P2 — T17S R5E §9",
+        "detail": "2,892 lbs (2022) · active since 2008 · most consistent",
+        "lat": 36.4669, "lon": -121.4371,
+    },
+    {
+        "comtrs": "27M15S04E15",
+        "label":  "P3 — T15S R4E §15",
+        "detail": "2,036 lbs (2022) · 9/9 years 2015–23 · avg 1,238 lbs/yr",
+        "lat": 36.6288, "lon": -121.5175,
+    },
+    {
+        "comtrs": "27M14S02E16",
+        "label":  "P4 — T14S R2E §16",
+        "detail": "1,578 lbs (2022) · step-change 2020 · northernmost site",
+        "lat": 36.7156, "lon": -121.7542,
+    },
+]
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +148,59 @@ def prepare_county_data() -> pd.DataFrame:
     return pivot
 
 
+def load_methomyl_county() -> pd.DataFrame | None:
+    """Pull methomyl (chem_code=383) county-year lbs from MySQL."""
+    try:
+        import mysql.connector
+        conn = mysql.connector.connect(
+            host=os.environ.get("PUR_DB_HOST", "127.0.0.1"),
+            port=int(os.environ.get("PUR_DB_PORT", "3366")),
+            user=os.environ.get("PUR_DB_USER", "root"),
+            password=os.environ.get("PUR_DB_PASS", "password"),
+            database=os.environ.get("PUR_DB_NAME", "pur_data"),
+            use_pure=True,
+        )
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT year, county_cd, ROUND(SUM(lbs_chm_used), 0) AS lbs
+            FROM pur_record
+            WHERE chem_code = 383
+              AND site_code < 65000
+              AND lbs_chm_used > 0
+            GROUP BY year, county_cd
+        """)
+        rows = cur.fetchall()
+        conn.close()
+
+        df = pd.DataFrame(rows, columns=["year", "county_cd", "lbs"])
+        df["fips"]        = df["county_cd"].apply(cdpr_to_fips)
+        df["county_name"] = df["county_cd"].apply(lambda c: COUNTY_NAMES.get(int(c), f"County {c}"))
+        df["year"]        = df["year"].astype(str)
+
+        state_totals = df.groupby("year")["lbs"].sum().to_dict()
+        df["pct_state"] = df.apply(
+            lambda r: round(r["lbs"] / state_totals[r["year"]] * 100, 1)
+            if state_totals.get(r["year"], 0) > 0 else 0.0,
+            axis=1,
+        )
+        df["hover"] = df.apply(
+            lambda r: (
+                f"<b>{r['county_name']} County — {r['year']}</b><br>"
+                f"Methomyl: {r['lbs']:,.0f} lbs<br>"
+                f"State share: {r['pct_state']:.1f}%<br>"
+                f"<i>Avian LD50 = 3.1 mg/kg (extremely toxic)</i>"
+            ),
+            axis=1,
+        )
+        print(f"Methomyl data: {len(df)} county-year records, "
+              f"{df['county_cd'].nunique()} counties, "
+              f"years {df['year'].min()}–{df['year'].max()}")
+        return df
+    except Exception as e:
+        print(f"  Methomyl load skipped: {e}")
+        return None
+
+
 def load_bbs() -> dict | None:
     if not BBS_CSV.exists():
         return None
@@ -136,11 +221,16 @@ def load_bbs() -> dict | None:
 # HTML GENERATION
 # ---------------------------------------------------------------------------
 
-def build_html(county_df: pd.DataFrame, geojson: dict, bbs: dict | None) -> str:
-    years = sorted(county_df["year"].unique())
-    max_lbs = int(county_df["total_lbs"].max() * 1.05)  # 5% headroom
+def build_html(
+    county_df: pd.DataFrame,
+    geojson: dict,
+    bbs: dict | None,
+    methomyl_df: pd.DataFrame | None,
+) -> str:
+    years    = sorted(county_df["year"].unique())
+    max_lbs  = int(county_df["total_lbs"].max() * 1.05)
 
-    # Precompute all_data[metric][year] = {fips, z, hover}
+    # Build ALL_DATA for class-based metrics
     all_data: dict = {}
     for metric in ("pyr_pct", "oxamyl_pct", "total_lbs"):
         all_data[metric] = {}
@@ -152,7 +242,22 @@ def build_html(county_df: pd.DataFrame, geojson: dict, bbs: dict | None) -> str:
                 "hover": yr["hover"].tolist(),
             }
 
-    # Embed Plotly JS from the installed package (offline-capable)
+    # Append methomyl metrics (from MySQL if available)
+    max_methomyl_lbs = 0
+    if methomyl_df is not None:
+        max_methomyl_lbs = int(methomyl_df["lbs"].max() * 1.05)
+        for metric in ("methomyl_lbs", "methomyl_pct"):
+            all_data[metric] = {}
+            for year in years:
+                yr = methomyl_df[methomyl_df["year"] == year]
+                z_col = "lbs" if metric == "methomyl_lbs" else "pct_state"
+                all_data[metric][year] = {
+                    "fips":  yr["fips"].tolist(),
+                    "z":     yr[z_col].round(1).tolist(),
+                    "hover": yr["hover"].tolist(),
+                }
+
+    # Embed Plotly JS
     try:
         import plotly as _plotly
         plotly_js_path = Path(_plotly.__file__).parent / "package_data" / "plotly.min.js"
@@ -160,10 +265,19 @@ def build_html(county_df: pd.DataFrame, geojson: dict, bbs: dict | None) -> str:
     except Exception:
         plotly_js_tag = '<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>'
 
-    data_json   = json.dumps(all_data)
-    geojson_str = json.dumps(geojson)
-    bbs_json    = json.dumps(bbs)
-    years_json  = json.dumps(years)
+    data_json      = json.dumps(all_data)
+    geojson_str    = json.dumps(geojson)
+    bbs_json       = json.dumps(bbs)
+    years_json     = json.dumps(years)
+    sites_json     = json.dumps(PRIORITY_SITES)
+    has_methomyl   = "true" if methomyl_df is not None else "false"
+    methomyl_btns  = "" if methomyl_df is None else """
+      <button class="metric-btn" data-metric="methomyl_lbs">
+        Methomyl lbs — Salinas Valley direct mortality
+      </button>
+      <button class="metric-btn" data-metric="methomyl_pct">
+        Methomyl % of state — concentration view
+      </button>"""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -189,7 +303,7 @@ def build_html(county_df: pd.DataFrame, geojson: dict, bbs: dict | None) -> str:
   .ctrl-label  {{ font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
                   letter-spacing: 0.05em; color: #666; }}
 
-  .metric-btns {{ display: flex; gap: 6px; }}
+  .metric-btns {{ display: flex; gap: 6px; flex-wrap: wrap; }}
   .metric-btn {{
     padding: 5px 12px; border: 1.5px solid #bbb; border-radius: 4px;
     background: white; cursor: pointer; font-size: 0.82rem; transition: all 0.15s;
@@ -198,6 +312,9 @@ def build_html(county_df: pd.DataFrame, geojson: dict, bbs: dict | None) -> str:
   .metric-btn.active {{
     background: #1a3a5c; color: white; border-color: #1a3a5c; font-weight: 600;
   }}
+  .metric-btn[data-metric^="methomyl"] {{ border-color: #c0392b; color: #c0392b; }}
+  .metric-btn[data-metric^="methomyl"].active {{ background: #c0392b; color: white; border-color: #c0392b; }}
+  .metric-btn[data-metric^="methomyl"]:hover {{ background: #fdf0ee; }}
 
   .year-row {{ display: flex; align-items: center; gap: 10px; }}
   #year-slider {{ width: 180px; accent-color: #1a3a5c; cursor: pointer; }}
@@ -217,7 +334,7 @@ def build_html(county_df: pd.DataFrame, geojson: dict, bbs: dict | None) -> str:
 
 <div id="header">
   <h1>California Agricultural Insecticide Use by County, 2015–2023</h1>
-  <p>Chlorpyrifos phase-out (2019–2021) and chemical substitution patterns · hover counties for detail</p>
+  <p>Chlorpyrifos phase-out (2019–2021) · chemical substitution · Monterey methomyl concentration · hover for detail · ★ = AudioMoth priority sites</p>
 </div>
 
 <div id="controls">
@@ -228,8 +345,8 @@ def build_html(county_df: pd.DataFrame, geojson: dict, bbs: dict | None) -> str:
         Pyrethroid share — aquatic / prey-base risk
       </button>
       <button class="metric-btn" data-metric="oxamyl_pct">
-        Oxamyl share — direct avian mortality risk
-      </button>
+        Oxamyl share — direct avian risk
+      </button>{methomyl_btns}
       <button class="metric-btn" data-metric="total_lbs">
         Total tracked lbs
       </button>
@@ -258,6 +375,9 @@ const ALL_DATA    = {data_json};
 const GEOJSON     = {geojson_str};
 const BBS         = {bbs_json};
 const MAX_LBS     = {max_lbs};
+const MAX_METH    = {max_methomyl_lbs};
+const HAS_METH    = {has_methomyl};
+const SITES       = {sites_json};
 
 const METRIC_CONFIG = {{
   pyr_pct: {{
@@ -270,7 +390,19 @@ const METRIC_CONFIG = {{
     colorscale: "RdPu",
     zmin: 0, zmax: 100,
     cbartitle: "Oxamyl<br>share (%)",
-    desc: "Oxamyl share of tracked insecticide lbs — proxy for direct avian mortality risk (LD50 = 3.16 mg/kg)",
+    desc: "Oxamyl share of tracked insecticide lbs — direct avian mortality risk (LD50 = 3.16 mg/kg)",
+  }},
+  methomyl_lbs: {{
+    colorscale: [[0,"#fff5f0"],[0.2,"#fc9272"],[0.5,"#ef3b2c"],[1,"#67000d"]],
+    zmin: 0, zmax: MAX_METH,
+    cbartitle: "Methomyl<br>lbs",
+    desc: "Methomyl (carbamate) lbs by county — LD50 = 3.1 mg/kg in birds. Monterey reaches 150K lbs in 2022 (59% of state total).",
+  }},
+  methomyl_pct: {{
+    colorscale: [[0,"#fff5f0"],[0.2,"#fc9272"],[0.5,"#ef3b2c"],[1,"#67000d"]],
+    zmin: 0, zmax: 100,
+    cbartitle: "Methomyl<br>state %",
+    desc: "Methomyl share of statewide use — Monterey reaches 59% in 2022; the rest of CA has declined 95% since 1990.",
   }},
   total_lbs: {{
     colorscale: "Blues",
@@ -284,11 +416,11 @@ let currentMetric   = "pyr_pct";
 let currentYearIdx  = 0;
 let playTimer       = null;
 
-// ── Initial render ──────────────────────────────────────────────────────────
+// ── Build traces ────────────────────────────────────────────────────────────
 
 function buildTraces(metric, yearIdx) {{
-  const d   = ALL_DATA[metric][YEARS[yearIdx]];
   const cfg = METRIC_CONFIG[metric];
+  const d   = (ALL_DATA[metric] || {{}})[YEARS[yearIdx]] || {{ fips:[], z:[], hover:[] }};
 
   const choropleth = {{
     type: "choropleth",
@@ -332,8 +464,31 @@ function buildTraces(metric, yearIdx) {{
     }});
   }}
 
+  // Priority AudioMoth sites — always shown
+  traces.push({{
+    type: "scattergeo",
+    lat: SITES.map(s => s.lat),
+    lon: SITES.map(s => s.lon),
+    mode: "markers+text",
+    marker: {{
+      symbol: "star",
+      size: 14,
+      color: "#e74c3c",
+      line: {{ width: 1.5, color: "white" }},
+    }},
+    text: SITES.map(s => s.label.split("—")[0].trim()),
+    textposition: "top center",
+    textfont: {{ size: 9, color: "#c0392b" }},
+    customdata: SITES.map(s => `<b>${{s.label}}</b><br>${{s.detail}}<br><i>Monterey methomyl hotspot</i>`),
+    hovertemplate: "%{{customdata}}<extra></extra>",
+    name: "AudioMoth priority sites",
+    showlegend: true,
+  }});
+
   return traces;
 }}
+
+// ── Layout ───────────────────────────────────────────────────────────────────
 
 const layout = {{
   geo: {{
@@ -348,7 +503,7 @@ const layout = {{
   }},
   margin: {{ r: 10, t: 10, l: 10, b: 10 }},
   legend: {{
-    x: 0.01, y: 0.18,
+    x: 0.01, y: 0.22,
     bgcolor: "rgba(255,255,255,0.88)",
     bordercolor: "#ccc", borderwidth: 1,
   }},
@@ -364,8 +519,8 @@ Plotly.newPlot("map", buildTraces("pyr_pct", 0), layout, {{
 // ── Update ───────────────────────────────────────────────────────────────────
 
 function updateChoropleth() {{
-  const d   = ALL_DATA[currentMetric][YEARS[currentYearIdx]];
   const cfg = METRIC_CONFIG[currentMetric];
+  const d   = (ALL_DATA[currentMetric] || {{}})[YEARS[currentYearIdx]] || {{ fips:[], z:[], hover:[] }};
   Plotly.restyle("map", {{
     locations:               [d.fips],
     z:                       [d.z],
@@ -432,17 +587,19 @@ document.querySelectorAll(".metric-btn").forEach(btn => {{
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    geojson    = fetch_ca_geojson()
-    county_df  = prepare_county_data()
-    bbs        = load_bbs()
+    geojson      = fetch_ca_geojson()
+    county_df    = prepare_county_data()
+    methomyl_df  = load_methomyl_county()
+    bbs          = load_bbs()
 
-    print(f"County data: {len(county_df)} rows, "
+    print(f"County data:  {len(county_df)} rows, "
           f"years {county_df['year'].min()}–{county_df['year'].max()}, "
           f"{county_df['fips'].nunique()} counties")
     if bbs:
-        print(f"BBS routes:  {len(bbs['lat'])} points")
+        print(f"BBS routes:   {len(bbs['lat'])} points")
+    print(f"Priority sites: {len(PRIORITY_SITES)} AudioMoth locations")
 
-    html = build_html(county_df, geojson, bbs)
+    html = build_html(county_df, geojson, bbs, methomyl_df)
     MAP_OUTPUT.write_text(html, encoding="utf-8")
 
     print(f"\nMap written to: {MAP_OUTPUT.resolve()}")

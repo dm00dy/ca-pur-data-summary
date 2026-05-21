@@ -73,7 +73,8 @@ COUNTY_NAMES: dict[str, str] = {
 # Story chemicals for the featured-chemical panel.
 # Displayed in order; each must exist as chemname in pur_sections.parquet.
 FEATURED_CHEMS: list[str] = [
-    "chlorpyrifos", "bifenthrin", "permethrin", "lambda-cyhalothrin", "oxamyl",
+    "chlorpyrifos", "bifenthrin", "permethrin", "lambda-cyhalothrin",
+    "oxamyl", "methomyl", "diazinon", "imidacloprid",
 ]
 CHEM_CLASS_LABELS: dict[str, str] = {
     "chlorpyrifos":       "Organophosphate",
@@ -81,6 +82,9 @@ CHEM_CLASS_LABELS: dict[str, str] = {
     "permethrin":         "Pyrethroid",
     "lambda-cyhalothrin": "Pyrethroid",
     "oxamyl":             "Carbamate",
+    "methomyl":           "Carbamate",
+    "diazinon":           "Organophosphate",
+    "imidacloprid":       "Neonicotinoid",
 }
 CHEM_DISPLAY_NAMES: dict[str, str] = {
     "chlorpyrifos":       "Chlorpyrifos",
@@ -88,7 +92,22 @@ CHEM_DISPLAY_NAMES: dict[str, str] = {
     "permethrin":         "Permethrin",
     "lambda-cyhalothrin": "λ-Cyhalothrin",
     "oxamyl":             "Oxamyl",
+    "methomyl":           "Methomyl",
+    "diazinon":           "Diazinon",
+    "imidacloprid":       "Imidacloprid",
 }
+
+# Priority AudioMoth monitoring sites (Monterey methomyl hotspots, identified 2025-05)
+PRIORITY_SITES: list[dict] = [
+    {"name": "T18S R6E S10", "comtrs": "27M18S06E10", "lat": 36.3801, "lon": -121.3057,
+     "lbs_2022": 4616, "note": "Hottest single section CA 2022"},
+    {"name": "T17S R5E S9",  "comtrs": "27M17S05E09", "lat": 36.4669, "lon": -121.4371,
+     "lbs_2022": 2892, "note": "Most consistent — active since 2008"},
+    {"name": "T15S R4E S15", "comtrs": "27M15S04E15", "lat": 36.6288, "lon": -121.5175,
+     "lbs_2022": 2036, "note": "Central Salinas cluster — 9/9 years 2015-23"},
+    {"name": "T14S R2E S16", "comtrs": "27M14S02E16", "lat": 36.7156, "lon": -121.7542,
+     "lbs_2022": 1578, "note": "Northern site near Gonzales — step-change 2020"},
+]
 
 
 # ---------------------------------------------------------------------------
@@ -503,6 +522,7 @@ def build_html(
     bbs_chem_sqrt_json    = json.dumps(bbs_chem_sqrt_max       or {}, separators=(",", ":"))
     featured_chems_json   = json.dumps(FEATURED_CHEMS,              separators=(",", ":"))
     chem_display_json     = json.dumps(CHEM_DISPLAY_NAMES,          separators=(",", ":"))
+    priority_sites_json   = json.dumps(PRIORITY_SITES,              separators=(",", ":"))
 
     classes_json = json.dumps(classes)
     years_json   = json.dumps([str(y) for y in years])
@@ -650,12 +670,21 @@ def build_html(
       <button class="chem-btn" data-chem="permethrin">Permethrin</button>
       <button class="chem-btn" data-chem="lambda-cyhalothrin">λ-Cyhalothrin</button>
       <button class="chem-btn" data-chem="oxamyl">Oxamyl</button>
+      <button class="chem-btn" data-chem="methomyl">Methomyl</button>
+      <button class="chem-btn" data-chem="diazinon">Diazinon</button>
+      <button class="chem-btn" data-chem="imidacloprid">Imidacloprid</button>
     </div>
   </div>
 
   <div class="ctrl-group">
     <span class="ctrl-label">Overlays</span>
     <label class="overlay-toggle">
+      <input type="checkbox" id="sites-toggle" checked>
+      <span><span class="swatch" style="background:rgba(255,100,0,0.85);border-color:#c0392b"></span>Priority sites</span>
+    </label>
+  </div>
+
+    <label class="overlay-toggle" style="margin-top:4px">
       <input type="checkbox" id="protected-toggle" checked>
       <span><span class="swatch swatch-usfws"></span>NWR</span>
       <span><span class="swatch swatch-cdfw"></span>State WA / ER</span>
@@ -693,6 +722,7 @@ const BBS_CHEM_LOOKUP_AQUATIC = {bbs_chem_aquatic_json};
 const BBS_CHEM_LOOKUP_AVIAN   = {bbs_chem_avian_json};
 const BBS_CHEM_SQRT_MAX       = {bbs_chem_sqrt_json};
 const FEATURED_CHEMS          = {featured_chems_json};
+const PRIORITY_SITES          = {priority_sites_json};
 
 // sqrt-of-max values for each metric, used to scale circle radii
 const BBS_SQRT_MAX = {{
@@ -881,6 +911,58 @@ map.on('load', () => {{
     }});
   }}
 
+  // Priority AudioMoth monitoring sites
+  map.addSource('priority-sites', {{
+    type: 'geojson',
+    data: {{
+      type: 'FeatureCollection',
+      features: PRIORITY_SITES.map(s => ({{
+        type: 'Feature',
+        geometry: {{ type: 'Point', coordinates: [s.lon, s.lat] }},
+        properties: {{ name: s.name, comtrs: s.comtrs, lbs_2022: s.lbs_2022, note: s.note }},
+      }})),
+    }},
+  }});
+  map.addLayer({{
+    id: 'priority-halo',
+    type: 'circle',
+    source: 'priority-sites',
+    paint: {{
+      'circle-radius': 16,
+      'circle-color': 'rgba(255,80,0,0.18)',
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#c0392b',
+    }},
+  }});
+  map.addLayer({{
+    id: 'priority-dots',
+    type: 'circle',
+    source: 'priority-sites',
+    paint: {{
+      'circle-radius': 6,
+      'circle-color': '#ff5000',
+      'circle-stroke-width': 2,
+      'circle-stroke-color': 'white',
+    }},
+  }});
+  map.addLayer({{
+    id: 'priority-labels',
+    type: 'symbol',
+    source: 'priority-sites',
+    layout: {{
+      'text-field': ['get', 'name'],
+      'text-font': ['Noto Sans Regular'],
+      'text-size': 11,
+      'text-offset': [0, 1.6],
+      'text-anchor': 'top',
+    }},
+    paint: {{
+      'text-color': '#c0392b',
+      'text-halo-color': 'white',
+      'text-halo-width': 1.5,
+    }},
+  }});
+
   updateAll();
   setupHover();
 }});
@@ -1036,6 +1118,23 @@ function setupHover() {{
     }});
     map.on('mouseleave', 'protected-fill', () => protPopup.remove());
   }}
+
+  const sitePopup = new maplibregl.Popup({{ closeButton: false, closeOnClick: false, maxWidth: '260px' }});
+  map.on('mousemove', 'priority-dots', (e) => {{
+    map.getCanvas().style.cursor = 'pointer';
+    const p = e.features[0].properties;
+    sitePopup.setLngLat(e.lngLat).setHTML(
+      `<b>📍 Priority monitoring site</b><br>`+
+      `<b style="color:#c0392b">${{p.name}}</b><br>`+
+      `<span style="color:#555;font-size:0.78rem">COMTRS: ${{p.comtrs}}</span><br>`+
+      `Methomyl 2022: <span class="metric-val">${{p.lbs_2022.toLocaleString()}} lbs</span><br>`+
+      `<span style="color:#888;font-size:0.75rem">${{p.note}}</span>`
+    ).addTo(map);
+  }});
+  map.on('mouseleave', 'priority-dots', () => {{
+    map.getCanvas().style.cursor = '';
+    sitePopup.remove();
+  }});
 }}
 
 // ── Controls ──────────────────────────────────────────────────────────────────
@@ -1092,6 +1191,13 @@ document.getElementById('protected-toggle').addEventListener('change', (e) => {{
   const vis = e.target.checked ? 'visible' : 'none';
   if (map.getLayer('protected-fill')) map.setLayoutProperty('protected-fill', 'visibility', vis);
   if (map.getLayer('protected-line')) map.setLayoutProperty('protected-line', 'visibility', vis);
+}});
+
+document.getElementById('sites-toggle').addEventListener('change', (e) => {{
+  const vis = e.target.checked ? 'visible' : 'none';
+  ['priority-halo','priority-dots','priority-labels'].forEach(id => {{
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+  }});
 }});
 </script>
 </body>
